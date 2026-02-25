@@ -1,0 +1,561 @@
+import { useState, useEffect, useCallback } from "react";
+
+const ST={async get(k){try{const r=await window.storage.get(k,true);return r?JSON.parse(r.value):null}catch{return null}},async set(k,v){try{await window.storage.set(k,JSON.stringify(v),true)}catch{}}};
+const KEY="wmc_sync_v1";
+const fmt=n=>"$"+n.toLocaleString();
+const CATS=["All","Bags","Shoes","Clothing","Watches","Jewellery"];
+const BRANDS=["Hermès","Chanel","Louis Vuitton","Gucci","Dior","Prada","Other"];
+const CONDS=["Like New","Excellent","Very Good","Good"];
+const TIERS=[{n:"Bronze",min:0,comm:20},{n:"Silver",min:500,comm:18},{n:"Gold",min:1500,comm:15},{n:"Platinum",min:5000,comm:12}];
+const CELEBS=[
+  {id:"c1",name:"Yasmine Sabri",bio:"Actress",followers:"2.1M",items:["p1","p2"]},
+  {id:"c2",name:"Mohamed Ramadan",bio:"Actor",followers:"5.8M",items:["p14"]},
+  {id:"c3",name:"Hend Sabry",bio:"Actress",followers:"3.4M",items:["p9"]},
+  {id:"c4",name:"Amr Diab",bio:"Singer",followers:"8.2M",items:[]},
+];
+const INIT={
+  products:[
+    {id:"p1",sellerId:"c1",celeb:true,brand:"HERMÈS",name:"Birkin 35 Himalaya Croc",cat:"Bags",price:45000,cond:"Excellent",status:"live",bidding:true,bids:[{u:"A",amt:42000,t:"5h"},{u:"B",amt:43500,t:"2h"},{u:"C",amt:44000,t:"30m"}],offers:[],saved:[]},
+    {id:"p2",sellerId:"c1",celeb:true,brand:"HERMÈS",name:"Kelly 28 Epsom Black",cat:"Bags",price:15300,cond:"Very Good",status:"live",bidding:false,bids:[],offers:[],saved:[]},
+    {id:"p14",sellerId:"c2",celeb:true,brand:"HERMÈS",name:"Birkin 30 Croc Ombré",cat:"Bags",price:26300,cond:"Like New",status:"live",bidding:true,bids:[{u:"D",amt:24000,t:"3h"},{u:"E",amt:25100,t:"1h"}],offers:[],saved:[]},
+    {id:"p9",sellerId:"c3",celeb:true,brand:"HERMÈS",name:"Kelly 28 Rose Sakura",cat:"Bags",price:18500,orig:22000,cond:"Excellent",status:"live",bidding:false,bids:[],offers:[],saved:[]},
+    {id:"p4",sellerId:"s1",brand:"LOUIS VUITTON",name:"Neverfull MM Monogram",cat:"Bags",price:1650,orig:2100,cond:"Very Good",status:"live",bidding:false,bids:[],offers:[{id:"o2",buyer:"ExtBuyer",amt:1400,status:"pending",t:"1h"}],saved:[]},
+    {id:"p5",sellerId:"s1",brand:"CHANEL",name:"Classic Flap Medium Caviar",cat:"Bags",price:8900,orig:10200,cond:"Good",status:"live",bidding:false,bids:[],offers:[],saved:[]},
+    {id:"p6",sellerId:"s2",brand:"LOUBOUTIN",name:"So Kate 120 Patent Nude",cat:"Shoes",price:495,orig:745,cond:"Good",status:"live",bidding:false,bids:[],offers:[],saved:[]},
+    {id:"p7",sellerId:"s1",brand:"GUCCI",name:"Horsebit 1955 Shoulder",cat:"Bags",price:2100,cond:"Like New",status:"live",bidding:false,bids:[],offers:[],saved:[]},
+    {id:"p8",sellerId:"s2",brand:"DIOR",name:"Lady Dior Medium Lambskin",cat:"Bags",price:4200,orig:5200,cond:"Very Good",status:"live",bidding:false,bids:[],offers:[],saved:[]},
+    {id:"p10",sellerId:"s1",brand:"CARTIER",name:"Love Bracelet 18K Gold",cat:"Jewellery",price:6200,cond:"Excellent",status:"live",bidding:false,bids:[],offers:[],saved:[]},
+    {id:"p11",sellerId:"s2",brand:"ROLEX",name:"Datejust 36 Oyster Steel",cat:"Watches",price:8450,cond:"Excellent",status:"live",bidding:false,bids:[],offers:[],saved:[]},
+  ],
+  seller:{id:"s1",name:"Nadia's Closet",points:750,sales:8,earnings:12400},
+  orders:[
+    {id:"or1",brand:"FENDI",name:"Peekaboo Mini",price:2200,type:"sale",status:"paid",payout:1760},
+    {id:"or3",brand:"VALENTINO",name:"Rockstud Heels",price:650,type:"sale",status:"pending_payout",payout:533},
+    {id:"or4",brand:"DIOR",name:"Lady Dior",price:4200,type:"purchase",status:"delivering",tracking:"WMC-0219",eta:"Feb 25"},
+  ],
+  pickups:[{id:"pk1",brand:"Fendi",name:"Baguette Sequin",status:"under_review",date:"Feb 18",cat:"Bags",cond:"Excellent",color:"Gold",desc:"Iconic sequin baguette, minor wear on strap"}],
+  myBids:[{prodId:"p1",amt:44500,status:"winning"},{prodId:"p14",amt:25500,status:"outbid"}],
+  myOffersMade:[],
+  workflow:[],
+  sellers:[
+    {id:"s1",name:"Sara Ahmed",phone:"+20 100 555 1234",points:750,sales:8,earnings:12400,status:"active"},
+    {id:"s2",name:"Nadia El-Sayed",phone:"+20 101 777 9876",points:320,sales:4,earnings:5800,status:"active"},
+  ],
+  celebs:[
+    {id:"c1",name:"Yasmine Sabri",bio:"Actress",followers:"2.1M",items:["p1","p2"]},
+    {id:"c2",name:"Mohamed Ramadan",bio:"Actor",followers:"5.8M",items:["p14"]},
+    {id:"c3",name:"Hend Sabry",bio:"Actress",followers:"3.4M",items:["p9"]},
+    {id:"c4",name:"Amr Diab",bio:"Singer",followers:"8.2M",items:[]},
+  ],
+  notifications:[],
+};
+
+const FH="'Playfair Display',serif",FB="'DM Sans',sans-serif";
+const FONT="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Dancing+Script:wght@400;500;600;700&display=swap";
+const FW="'Dancing Script',cursive";
+const C={bg:"#0A0A0A",card:"#141414",card2:"#1C1C1C",bdr:"#222",bdr2:"#333",wh:"#fff",tx:"#fff",tm:"#aaa",tl:"#666",dim:"#555",red:"#FF4444",grn:"#44DD66",bl:"#88BBFF"};
+
+const CSS=`
+@import url('${FONT}');
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:${C.bg};color:${C.wh};font-family:${FB}}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:${C.bg}}::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,-16px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+input,select,textarea{color:${C.wh}}
+input::placeholder,textarea::placeholder{color:#555}
+`;
+
+// Icons
+const Heart=({on,s=18})=><svg width={s} height={s} viewBox="0 0 24 24" fill={on?"#FF4444":"none"} stroke={on?"#FF4444":"#555"} strokeWidth="1.8"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>;
+const Srch=()=><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>;
+const XX=({s=18})=><svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+const Chk=()=><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.grn} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>;
+const CamIc=()=><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.8"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>;
+const BackIc=()=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>;
+const Img=({src,r=0})=>src?<img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block",borderRadius:r}}/>:<div style={{width:"100%",height:"100%",background:"linear-gradient(135deg,#1A1A1A,#111)",display:"flex",alignItems:"center",justifyContent:"center",borderRadius:r}}><span style={{fontSize:11,fontWeight:700,letterSpacing:3,color:"#333"}}>WIMC</span></div>;
+const Badge=({t,c=C.wh})=><span style={{fontSize:10,fontWeight:700,padding:"3px 10px",background:c+"18",color:c,borderRadius:4,letterSpacing:.5,whiteSpace:"nowrap"}}>{t}</span>;
+const Toast=({msg})=>msg?<div style={{position:"fixed",top:80,left:"50%",transform:"translateX(-50%)",background:C.wh,color:"#000",padding:"10px 24px",borderRadius:12,fontSize:13,fontWeight:600,zIndex:999,animation:"toastIn .3s",boxShadow:"0 8px 32px rgba(0,0,0,.5)",whiteSpace:"nowrap"}}>{msg}</div>:null;
+const Btn=({children,primary,danger,outline,full,sm,onClick,disabled,style:sx})=>{
+  const base={fontFamily:FB,fontWeight:700,cursor:disabled?"default":"pointer",border:"none",borderRadius:sm?8:10,fontSize:sm?11:14,transition:"all .15s",opacity:disabled?.4:1};
+  const v=danger?{background:C.red,color:C.wh,padding:sm?"7px 14px":"12px 28px"}:outline?{background:"transparent",border:"1.5px solid #444",color:C.wh,padding:sm?"7px 14px":"12px 28px"}:primary?{background:C.wh,color:"#000",padding:sm?"7px 14px":"12px 28px"}:{background:"#222",color:C.wh,padding:sm?"7px 14px":"12px 28px"};
+  return <button onClick={disabled?undefined:onClick} style={{...base,...v,width:full?"100%":undefined,...sx}}>{children}</button>;
+};
+
+// Modal overlay
+const Modal=({title:t,onClose:oc,children:ch,wide})=>(
+  <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.75)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={oc}>
+    <div onClick={e=>e.stopPropagation()} style={{background:C.card,borderRadius:16,padding:"24px 28px 28px",width:"100%",maxWidth:wide?600:420,maxHeight:"85vh",overflowY:"auto",animation:"fadeIn .25s",border:"1px solid "+C.bdr}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}><h3 style={{fontFamily:FH,fontSize:20,fontWeight:600,margin:0}}>{t}</h3><button onClick={oc} style={{background:"none",border:"none",cursor:"pointer"}}><XX s={20}/></button></div>{ch}
+    </div>
+  </div>
+);
+
+// Product Card
+const Card=({p,onTap,onSave,saved,wide})=>{
+  const hb=p.bids?.length?Math.max(...p.bids.map(b=>b.amt)):0;
+  return(
+  <div onClick={()=>onTap(p)} style={{cursor:"pointer",background:C.card,borderRadius:14,border:"1px solid "+C.bdr,overflow:"hidden",transition:"transform .2s,border-color .2s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#444";e.currentTarget.style.transform="translateY(-2px)"}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.bdr;e.currentTarget.style.transform="translateY(0)"}}>
+    <div style={{position:"relative",aspectRatio:"3/4",background:"#1A1A1A"}}><Img src={p.photo}/>
+      <button onClick={e=>{e.stopPropagation();onSave(p.id)}} style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,.7)",border:"none",borderRadius:"50%",width:32,height:32,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"background .2s"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,0,0,.9)"} onMouseLeave={e=>e.currentTarget.style.background="rgba(0,0,0,.7)"}><Heart on={saved} s={14}/></button>
+      {p.bidding&&<div style={{position:"absolute",bottom:8,left:8,background:C.wh,color:"#000",padding:"3px 10px",fontSize:9,fontWeight:700,letterSpacing:1.5,borderRadius:4}}>LIVE AUCTION</div>}
+      {!p.bidding&&p.orig&&<div style={{position:"absolute",bottom:8,left:8,background:C.red,color:C.wh,padding:"3px 10px",fontSize:9,fontWeight:700,borderRadius:4}}>PRICE DROP</div>}
+    </div>
+    <div style={{padding:wide?"10px 12px 12px":"8px 10px 10px"}}>
+      <p style={{fontSize:wide?10:9,fontWeight:700,letterSpacing:2,color:"#555",margin:"0 0 3px"}}>{p.brand}</p>
+      <p style={{fontSize:wide?13:11,fontWeight:500,margin:"0 0 4px",lineHeight:1.3,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{p.name}</p>
+      <div style={{display:"flex",gap:4,alignItems:"baseline"}}>{p.orig&&<span style={{fontSize:wide?11:10,color:"#444",textDecoration:"line-through"}}>{fmt(p.orig)}</span>}<span style={{fontSize:wide?16:13,fontWeight:700,color:p.orig?C.red:C.wh}}>{p.bidding&&hb?fmt(hb):fmt(p.price)}</span></div>
+    </div>
+  </div>);
+};
+
+export default function App(){
+  const[pg,sP]=useState("splash");const[tab,sT]=useState("home");const[d,sD]=useState(null);
+  const[sel,sS]=useState(null);const[search,sSr]=useState("");const[catF,sCf]=useState("All");
+  const[modal,sM]=useState(null);const[mD,sMd]=useState({});const[viewCeleb,sVC]=useState(null);
+  const[subPage,sSub]=useState(null);const[sellF,sSf]=useState({});const[toast,sToast]=useState(null);
+  const[rdy,sRdy]=useState(false);const[aTab,sATab]=useState("review");const[aModal,sAM]=useState(null);const[aData,sAD]=useState({});
+  const[mobMenu,sMobMenu]=useState(false);
+
+  useEffect(()=>{(async()=>{const v=await ST.get(KEY);if(v){
+    // Merge with defaults to ensure all fields exist
+    const merged={...INIT,...v,products:[...(v.products||INIT.products)],workflow:[...(v.workflow||[])],notifications:[...(v.notifications||[])],orders:[...(v.orders||INIT.orders)],celebs:[...(v.celebs||INIT.celebs)],sellers:[...(v.sellers||INIT.sellers||[])]};
+    sD(merged);
+  } else {const init={...INIT};sD(init);await ST.set(KEY,init)}sRdy(true);setTimeout(()=>sP("main"),1800)})()},[]);
+  // Poll for changes from admin panel every 3s
+  useEffect(()=>{if(pg!=="main")return;const iv=setInterval(async()=>{const v=await ST.get(KEY);if(v)sD(v)},3000);return()=>clearInterval(iv)},[pg]);
+  const sv=useCallback(async v=>{sD(v);await ST.set(KEY,v)},[]);
+  const notify=m=>{sToast(m);setTimeout(()=>sToast(null),2000)};
+  const go=(t,sub)=>{sT(t);sS(null);sM(null);sVC(null);sSub(sub||null);sMobMenu(false)};
+  const tSave=async id=>{const nd={...d,products:d.products.map(p=>p.id===id?{...p,saved:(p.saved||[]).includes("me")?(p.saved||[]).filter(x=>x!=="me"):[...(p.saved||[]),"me"]}:p)};await sv(nd)};
+  const isSv=p=>(p.saved||[]).includes("me");
+  const ghb=p=>p.bids?.length?Math.max(...p.bids.map(b=>b.amt)):0;
+  const live=(d?.products||[]).filter(p=>p.status==="live");
+  const filt=live.filter(p=>(catF==="All"||p.cat===catF)&&(!search||p.brand.toLowerCase().includes(search.toLowerCase())||p.name.toLowerCase().includes(search.toLowerCase())));
+  const CELEBS_DATA=d?.celebs||CELEBS;
+  const seller=d?.seller||d?.sellers?.[0]||{id:"s1",name:"User",points:0,sales:0,earnings:0};
+  const sellerId=seller?.id||"s1";
+  const sellerName=seller?.name||"User";
+  const tier=seller?TIERS.find((t,i)=>i===TIERS.length-1||(seller.points>=t.min&&seller.points<TIERS[i+1].min)):TIERS[0];
+  const nextT=TIERS[TIERS.indexOf(tier)+1];
+  const pctN=nextT?Math.min(100,((seller?.points-tier.min)/(nextT.min-tier.min))*100):100;
+  const inOffers=d?d.products.filter(p=>p.sellerId==="s1").flatMap(p=>(p.offers||[]).filter(o=>o.status==="pending"&&o.buyer!=="me").map(o=>({...o,prod:p}))):[];
+
+  const placeBid=async(pid,a)=>{const nd={...d,products:d.products.map(p=>p.id===pid?{...p,bids:[...p.bids,{u:"You",amt:Number(a),t:"now"}]}:p),myBids:[...d.myBids.filter(b=>b.prodId!==pid),{prodId:pid,amt:Number(a),status:"winning"}]};await sv(nd);sM(null);notify("Bid placed!");sS(nd.products.find(p=>p.id===pid))};
+  const makeOffer=async(pid,a)=>{const nd={...d,products:d.products.map(p=>p.id===pid?{...p,offers:[...(p.offers||[]),{id:"o"+Date.now(),buyer:"me",amt:Number(a),status:"pending",t:"now"}]}:p),myOffersMade:[...(d.myOffersMade||[]),{prodId:pid,amt:Number(a),status:"pending"}]};await sv(nd);sM(null);notify("Offer sent!")};
+  const buyNow=async pid=>{const pr=d.products.find(p=>p.id===pid);const nd={...d,products:d.products.map(p=>p.id===pid?{...p,status:"sold"}:p),orders:[...d.orders,{id:"or"+Date.now(),brand:pr.brand,name:pr.name,price:pr.price,type:"purchase",status:"processing"}]};await sv(nd);sM(null);sS(null);notify("Purchased!");go("me")};
+  const acceptOffer=async(pid,oid)=>{const nd={...d,products:d.products.map(p=>p.id===pid?{...p,offers:p.offers.map(o=>o.id===oid?{...o,status:"accepted"}:{...o,status:o.status==="pending"?"rejected":o.status})}:p)};await sv(nd);notify("Offer accepted!")};
+  const rejectOffer=async(pid,oid)=>{const nd={...d,products:d.products.map(p=>p.id===pid?{...p,offers:p.offers.map(o=>o.id===oid?{...o,status:"rejected"}:o)}:p)};await sv(nd);notify("Offer declined")};
+  const submitListing=async()=>{if(!sellF.brand||!sellF.name)return;const wfItem={id:"wf"+Date.now(),sellerId:sellerId,userName:sellerName,userPhone:"+20 100 000 0000",brand:sellF.brand,name:sellF.name,cat:sellF.cat||"",cond:sellF.cond||"",color:sellF.color||"",desc:sellF.desc||"",userPhotos:(sellF.photos||[]).slice(0,4).map((p,i)=>typeof p==="string"&&p.startsWith("data:")?p:"📷 Photo "+(i+1)),stage:"pending_review",createdAt:"Just now",suggestedPrice:null,pickupDate:null,pickupTime:null,pickupAddress:null,driverPhone:null,adminNotes:"",proPhotos:[],proDesc:"",history:[{t:"Just now",msg:"Item submitted by "+sellerName}]};
+  // Read fresh data before writing to avoid overwriting admin changes
+  const fresh=await ST.get(KEY);const base=fresh||d;const nd={...base,workflow:[...(base.workflow||[]),wfItem]};await sv(nd);sSf({});notify("Submitted for review!")};
+  const adminApprove=async(pkId,price)=>{const pk=d.pickups.find(p=>p.id===pkId);if(!pk)return;const np={id:"p"+Date.now(),sellerId:"s1",brand:pk.brand,name:pk.name,cat:pk.cat||"Bags",price:Number(price),cond:pk.cond||"Very Good",status:"live",bidding:false,bids:[],offers:[],saved:[],photo:pk.photo};const nd={...d,pickups:d.pickups.map(p=>p.id===pkId?{...p,status:"approved",price:Number(price)}:p),products:[...d.products,np]};await sv(nd);notify("Approved & listed!")};
+  const adminReject=async(pkId,reason)=>{const nd={...d,pickups:d.pickups.map(p=>p.id===pkId?{...p,status:"rejected",reason:reason||"Does not meet standards"}:p)};await sv(nd);notify("Item rejected")};
+  const adminUpdateOrder=async(oid,ns)=>{const nd={...d,orders:d.orders.map(o=>o.id===oid?{...o,status:ns}:o)};await sv(nd);notify("Order → "+ns)};
+
+  const inp={width:"100%",background:C.card2,border:"1px solid "+C.bdr2,borderRadius:10,padding:"12px 14px",fontSize:14,outline:"none",fontFamily:FB,color:C.wh};
+
+  if(!rdy||!d) return <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><style>{CSS}</style><div style={{width:16,height:16,border:"2px solid #fff",borderTopColor:"transparent",borderRadius:"50%",animation:"pulse 1.5s infinite"}}/></div>;
+
+  // ── SPLASH ──
+  if(pg==="splash") return(
+    <div style={{minHeight:"100vh",background:"#000",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+      <style>{CSS}</style>
+      <div style={{width:50,height:1,background:"#fff",marginBottom:28,opacity:.2}}/>
+      <h1 style={{fontFamily:FH,fontSize:48,fontWeight:700,color:"#fff",textAlign:"center",lineHeight:1.15,margin:"0 0 14px",letterSpacing:3}}>WHATSINMA<br/>CLOSET</h1>
+      <p style={{fontSize:12,fontWeight:500,color:"#555",letterSpacing:8,margin:0}}>PRE-LOVED LUXURY</p>
+      <p style={{fontFamily:FW,fontSize:24,color:"#888",marginTop:18,letterSpacing:1}}>by Dina Bahgat</p>
+      <div style={{width:50,height:1,background:"#fff",marginTop:24,opacity:.2}}/>
+      <div style={{marginTop:40,width:16,height:16,border:"1.5px solid #fff",borderTopColor:"transparent",borderRadius:"50%",animation:"pulse 1.5s infinite"}}/>
+    </div>
+  );
+
+  // ── NAV ──
+  const NAV_ITEMS=[{k:"home",l:"Home"},{k:"shop",l:"Shop"},{k:"celeb",l:"Celebrities"},{k:"sell",l:"Sell"},{k:"me",l:"Account"}];
+  const Nav=()=>(
+    <nav style={{position:"sticky",top:0,zIndex:200,background:"rgba(10,10,10,.92)",backdropFilter:"blur(20px)",borderBottom:"1px solid "+C.bdr}}>
+      <div style={{maxWidth:1200,margin:"0 auto",padding:"0 24px",height:60,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{cursor:"pointer"}} onClick={()=>go("home")}><h1 style={{fontFamily:FH,fontSize:22,fontWeight:700,letterSpacing:1,margin:0,lineHeight:1}}>WIMC</h1><p style={{fontFamily:FW,fontSize:13,color:"#666",margin:0}}>by Dina Bahgat</p></div>
+        {/* Desktop nav */}
+        <div className="desk-nav" style={{display:"flex",gap:28,alignItems:"center"}}>
+          {NAV_ITEMS.map(n=><span key={n.k} onClick={()=>go(n.k)} style={{fontSize:13,fontWeight:tab===n.k?700:400,color:tab===n.k?"#fff":"#888",cursor:"pointer",transition:"color .2s",letterSpacing:.5}} onMouseEnter={e=>e.target.style.color="#fff"} onMouseLeave={e=>{if(tab!==n.k)e.target.style.color="#888"}}>{n.l}</span>)}
+        </div>
+        {/* Mobile hamburger */}
+        <button className="mob-menu-btn" onClick={()=>sMobMenu(!mobMenu)} style={{background:"none",border:"none",cursor:"pointer",display:"none",flexDirection:"column",gap:4}}>
+          <span style={{width:20,height:2,background:"#fff",borderRadius:1,transition:"all .2s",transform:mobMenu?"rotate(45deg) translateY(6px)":"none"}}/><span style={{width:20,height:2,background:"#fff",borderRadius:1,opacity:mobMenu?0:1,transition:"opacity .2s"}}/><span style={{width:20,height:2,background:"#fff",borderRadius:1,transition:"all .2s",transform:mobMenu?"rotate(-45deg) translateY(-6px)":"none"}}/>
+        </button>
+      </div>
+      {mobMenu&&<div style={{background:C.card,borderBottom:"1px solid "+C.bdr,padding:"8px 24px 16px"}}>
+        {NAV_ITEMS.map(n=><div key={n.k} onClick={()=>go(n.k)} style={{padding:"10px 0",fontSize:14,fontWeight:tab===n.k?700:400,color:tab===n.k?"#fff":"#888",cursor:"pointer"}}>{n.l}</div>)}
+      </div>}
+      <style>{`@media(max-width:768px){.desk-nav{display:none !important}.mob-menu-btn{display:flex !important}}`}</style>
+    </nav>
+  );
+
+  const Wrap=({children,narrow})=><div style={{maxWidth:narrow?800:1200,margin:"0 auto",padding:"0 24px"}}>{children}</div>;
+
+  // ── PRODUCT DETAIL ──
+  if(sel){const hb=ghb(sel);return(<div style={{minHeight:"100vh",background:C.bg}}><style>{CSS}</style><Nav/><Toast msg={toast}/>
+    <Wrap><div style={{animation:"fadeIn .3s",padding:"32px 0 60px"}}>
+      <button onClick={()=>sS(null)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:6,color:"#888",fontSize:13,marginBottom:20,fontFamily:FB}} onMouseEnter={e=>e.target.style.color="#fff"} onMouseLeave={e=>e.target.style.color="#888"}><BackIc/> Back</button>
+      <div style={{display:"grid",gridTemplateColumns:"1fr",gap:32}} className="prod-grid">
+        <style>{`@media(min-width:768px){.prod-grid{grid-template-columns:1fr 1fr !important}}`}</style>
+        <div style={{aspectRatio:"3/4",background:"#1A1A1A",borderRadius:16,overflow:"hidden",maxHeight:520}}><Img src={sel.photo} r={16}/></div>
+        <div>
+          <p style={{fontSize:11,fontWeight:700,letterSpacing:3,color:"#555",margin:"0 0 6px"}}>{sel.brand}</p>
+          <h2 style={{fontFamily:FH,fontSize:28,fontWeight:600,margin:"0 0 16px",lineHeight:1.3}}>{sel.name}</h2>
+          {sel.bidding&&<div style={{background:"#000",borderRadius:14,padding:"18px 20px",marginBottom:20,border:"1px solid "+C.bdr}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}><span style={{fontSize:10,fontWeight:700,letterSpacing:3}}>LIVE AUCTION</span><span style={{fontSize:11,color:"#555"}}>{sel.bids?.length} bids</span></div>
+            <div style={{display:"flex",justifyContent:"space-between"}}><div><p style={{fontSize:10,color:"#666",margin:"0 0 2px"}}>Starting</p><p style={{fontSize:16,fontWeight:600,color:"#888",margin:0}}>{fmt(sel.price)}</p></div><div style={{textAlign:"right"}}><p style={{fontSize:10,color:"#666",margin:"0 0 2px"}}>Highest Bid</p><p style={{fontSize:24,fontWeight:800,margin:0}}>{hb>0?fmt(hb):"—"}</p></div></div>
+          </div>}
+          {!sel.bidding&&<div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:20}}>
+            <span style={{fontSize:28,fontWeight:700}}>{fmt(sel.price)}</span>
+            {sel.orig&&<><span style={{fontSize:16,color:"#444",textDecoration:"line-through"}}>{fmt(sel.orig)}</span><span style={{fontSize:14,fontWeight:700,color:C.red}}>-{Math.round((1-sel.price/sel.orig)*100)}%</span></>}
+          </div>}
+          <div style={{display:"flex",gap:6,marginBottom:20,flexWrap:"wrap"}}>{[sel.cond,sel.cat].map((t,i)=><span key={i} style={{fontSize:11,fontWeight:600,padding:"6px 14px",background:C.card2,borderRadius:20,color:"#aaa"}}>{t}</span>)}</div>
+          <div style={{borderTop:"1px solid "+C.bdr,paddingTop:16,marginBottom:24}}>
+            {["Authenticity guaranteed","Quality checked","Free shipping"].map((t,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><Chk/><span style={{fontSize:13,color:"#aaa"}}>{t}</span></div>)}
+          </div>
+          {sel.status==="live"&&<div>
+            {sel.celeb&&sel.bidding?(<div>
+              <Btn primary full onClick={()=>{sMd({bid:String(hb+500)});sM("bid")}}>Place Bid</Btn>
+              <div style={{display:"flex",gap:10,marginTop:10}}><Btn outline full onClick={()=>{sMd({v:""});sM("offer")}}>Make Offer</Btn><Btn full onClick={()=>sM("buy")}>Buy Now</Btn></div>
+            </div>):(<div style={{display:"flex",gap:10}}>
+              <Btn outline full onClick={()=>{sMd({v:""});sM("offer")}}>Make Offer</Btn>
+              <Btn primary full onClick={()=>sM("buy")}>Buy — {fmt(sel.price)}</Btn>
+            </div>)}
+          </div>}
+        </div>
+      </div>
+    </div></Wrap>
+    {modal==="bid"&&<Modal title="Place Bid" onClose={()=>sM(null)}>
+      <p style={{fontSize:13,color:"#aaa",margin:"0 0 14px"}}>Highest: <b style={{color:C.wh}}>{hb>0?fmt(hb):"None"}</b></p>
+      <input value={mD.bid||""} onChange={e=>sMd({...mD,bid:e.target.value})} type="number" placeholder="Amount" style={{...inp,fontSize:20,fontWeight:700,marginBottom:14}}/>
+      <Btn primary full disabled={!(Number(mD.bid)>hb)} onClick={()=>placeBid(sel.id,mD.bid)}>Confirm Bid</Btn>
+    </Modal>}
+    {modal==="offer"&&<Modal title="Make Offer" onClose={()=>sM(null)}>
+      <p style={{fontSize:13,color:"#aaa",margin:"0 0 14px"}}>Listed at <b style={{color:C.wh}}>{fmt(sel.price)}</b></p>
+      <input value={mD.v||""} onChange={e=>sMd({...mD,v:e.target.value})} type="number" placeholder="Your offer" style={{...inp,fontSize:20,fontWeight:700,marginBottom:14}}/>
+      <Btn primary full disabled={!mD.v} onClick={()=>makeOffer(sel.id,mD.v)}>Submit Offer</Btn>
+    </Modal>}
+    {modal==="buy"&&<Modal title="Confirm Purchase" onClose={()=>sM(null)}>
+      <div style={{display:"flex",gap:14,padding:"12px 0",borderBottom:"1px solid "+C.bdr,marginBottom:16}}><div style={{width:64,height:80,borderRadius:8,background:"#1A1A1A",flexShrink:0,overflow:"hidden"}}><Img src={sel.photo}/></div><div><p style={{fontSize:10,fontWeight:700,letterSpacing:1.5,color:"#555",margin:"0 0 3px"}}>{sel.brand}</p><p style={{fontSize:14,margin:"0 0 6px"}}>{sel.name}</p><p style={{fontSize:22,fontWeight:700,margin:0}}>{fmt(sel.price)}</p></div></div>
+      <Btn primary full onClick={()=>buyNow(sel.id)}>Pay {fmt(sel.price)}</Btn>
+    </Modal>}
+  </div>);}
+
+  // ── HOME ──
+  if(tab==="home") return(<div style={{minHeight:"100vh",background:C.bg}}><style>{CSS}</style><Nav/><Toast msg={toast}/>
+    <div style={{animation:"fadeIn .3s"}}>
+      {/* Hero auction */}
+      {(()=>{const fp=live.filter(p=>p.bidding)[0];if(!fp)return null;const fhb=ghb(fp);return(
+      <div onClick={()=>sS(fp)} style={{cursor:"pointer",background:"#000",borderBottom:"1px solid "+C.bdr}}>
+        <Wrap><div style={{display:"flex",flexDirection:"column",padding:"40px 0"}} className="hero-grid">
+          <style>{`@media(min-width:768px){.hero-grid{flex-direction:row !important;align-items:center;gap:48px}}`}</style>
+          <div style={{width:"100%",maxWidth:400,aspectRatio:"4/3",borderRadius:16,overflow:"hidden",background:"#1A1A1A",flexShrink:0,marginBottom:20}}><Img src={fp.photo} r={16}/></div>
+          <div>
+            <span style={{fontSize:10,fontWeight:700,letterSpacing:3,color:"#fff",display:"inline-block",marginBottom:8,padding:"4px 12px",border:"1px solid #333",borderRadius:4}}>LIVE AUCTION</span>
+            <h2 style={{fontFamily:FH,fontSize:32,fontWeight:700,margin:"0 0 8px",lineHeight:1.2}}>{fp.brand} {fp.name}</h2>
+            <p style={{fontSize:14,color:"#666",margin:"0 0 16px"}}>{fp.cond} · {fp.bids?.length} bids</p>
+            <div style={{display:"flex",gap:32}}><div><p style={{fontSize:11,color:"#555",margin:"0 0 2px"}}>Starting</p><p style={{fontSize:18,fontWeight:600,color:"#888",margin:0}}>{fmt(fp.price)}</p></div><div><p style={{fontSize:11,color:"#555",margin:"0 0 2px"}}>Current Bid</p><p style={{fontSize:28,fontWeight:800,margin:0}}>{fhb>0?fmt(fhb):"—"}</p></div></div>
+          </div>
+        </div></Wrap>
+      </div>)})()}
+      {/* Celebrity Closets */}
+      <Wrap><div style={{padding:"40px 0 0"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:20}}><h2 style={{fontFamily:FH,fontSize:22,fontWeight:600,margin:0}}>Celebrity Closets</h2><span style={{fontSize:13,color:"#888",cursor:"pointer"}} onClick={()=>go("celeb")}>See all →</span></div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}} className="celeb-grid">
+          <style>{`@media(min-width:768px){.celeb-grid{grid-template-columns:repeat(4,1fr) !important}}`}</style>
+          {CELEBS.map(cn=>(
+            <div key={cn.id} onClick={()=>{sVC(cn);go("celeb")}} style={{background:C.card,borderRadius:14,padding:"20px 12px",textAlign:"center",cursor:"pointer",border:"1px solid "+C.bdr,transition:"border-color .2s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#444"} onMouseLeave={e=>e.currentTarget.style.borderColor=C.bdr}>
+              <div style={{width:48,height:48,borderRadius:"50%",background:"linear-gradient(135deg,#fff,#ccc)",margin:"0 auto 10px",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:18,fontWeight:800,color:"#000",fontFamily:FH}}>{cn.name[0]}</span></div>
+              <p style={{fontSize:14,fontWeight:700,margin:"0 0 2px"}}>{cn.name} <span style={{color:"#666"}}>✓</span></p>
+              <p style={{fontSize:11,color:"#555",margin:0}}>{cn.bio} · {cn.followers}</p>
+            </div>
+          ))}
+        </div>
+      </div></Wrap>
+      {/* Trending */}
+      <Wrap><div style={{padding:"40px 0"}}>
+        <h2 style={{fontFamily:FH,fontSize:22,fontWeight:600,margin:"0 0 20px"}}>Trending</h2>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14}} className="trending-grid">
+          <style>{`@media(min-width:768px){.trending-grid{grid-template-columns:repeat(4,1fr) !important}}`}</style>
+          {live.slice(0,8).map(p=><Card key={p.id} p={p} onTap={sS} onSave={tSave} saved={isSv(p)} wide/>)}
+        </div>
+      </div></Wrap>
+    </div>
+  </div>);
+
+  // ── SHOP ──
+  if(tab==="shop") return(<div style={{minHeight:"100vh",background:C.bg}}><style>{CSS}</style><Nav/><Toast msg={toast}/>
+    <Wrap><div style={{animation:"fadeIn .3s",padding:"32px 0 48px"}}>
+      <h1 style={{fontFamily:FH,fontSize:28,fontWeight:700,margin:"0 0 20px"}}>Shop</h1>
+      <div style={{display:"flex",gap:12,marginBottom:20,flexWrap:"wrap",alignItems:"center"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,background:C.card,borderRadius:10,padding:"10px 14px",border:"1px solid "+C.bdr,flex:"1 1 200px",maxWidth:360}}><Srch/><input value={search} onChange={e=>sSr(e.target.value)} placeholder="Search..." style={{border:"none",background:"none",outline:"none",fontSize:13,fontFamily:FB,color:C.wh,flex:1}}/></div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{CATS.map(c=><button key={c} onClick={()=>sCf(c)} style={{padding:"7px 16px",borderRadius:20,fontSize:11,fontWeight:600,cursor:"pointer",border:catF===c?"2px solid #fff":"1px solid "+C.bdr,background:catF===c?"#fff":C.card,color:catF===c?"#000":"#aaa",fontFamily:FB,transition:"all .15s"}}>{c}</button>)}</div>
+      </div>
+      <p style={{fontSize:12,color:"#555",marginBottom:12}}>{filt.length} items</p>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14}} className="shop-grid">
+        <style>{`@media(min-width:640px){.shop-grid{grid-template-columns:repeat(3,1fr) !important}}@media(min-width:1024px){.shop-grid{grid-template-columns:repeat(4,1fr) !important}}`}</style>
+        {filt.map(p=><Card key={p.id} p={p} onTap={sS} onSave={tSave} saved={isSv(p)} wide/>)}
+      </div>
+    </div></Wrap>
+  </div>);
+
+  // ── CELEB ──
+  if(tab==="celeb"){
+    if(viewCeleb){const ci=live.filter(p=>viewCeleb.items.includes(p.id));return(
+    <div style={{minHeight:"100vh",background:C.bg}}><style>{CSS}</style><Nav/><Wrap><div style={{animation:"fadeIn .3s",padding:"32px 0 48px"}}>
+      <button onClick={()=>sVC(null)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:6,color:"#888",fontSize:13,marginBottom:20,fontFamily:FB}}><BackIc/> Back</button>
+      <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:28}}>
+        <div style={{width:64,height:64,borderRadius:"50%",background:"linear-gradient(135deg,#fff,#ccc)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:24,fontWeight:800,color:"#000",fontFamily:FH}}>{viewCeleb.name[0]}</span></div>
+        <div><h2 style={{fontFamily:FH,fontSize:24,fontWeight:700,margin:"0 0 3px"}}>{viewCeleb.name} <span style={{color:"#666",fontSize:14}}>✓</span></h2><p style={{fontSize:13,color:"#666",margin:0}}>{viewCeleb.bio} · {viewCeleb.followers}</p></div>
+      </div>
+      {ci.length===0?<div style={{textAlign:"center",padding:48,background:C.card,borderRadius:16,border:"1px solid "+C.bdr}}><p style={{fontSize:14,fontWeight:600,color:"#aaa"}}>No items yet</p></div>:
+      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14}} className="celeb-items-grid"><style>{`@media(min-width:768px){.celeb-items-grid{grid-template-columns:repeat(3,1fr) !important}}`}</style>{ci.map(p=><Card key={p.id} p={p} onTap={x=>{sVC(null);sS(x)}} onSave={tSave} saved={isSv(p)} wide/>)}</div>}
+    </div></Wrap></div>);}
+    return(<div style={{minHeight:"100vh",background:C.bg}}><style>{CSS}</style><Nav/>
+      <Wrap><div style={{animation:"fadeIn .3s",padding:"32px 0 48px"}}>
+        <h1 style={{fontFamily:FH,fontSize:28,fontWeight:700,margin:"0 0 6px"}}>Celebrity Closets</h1>
+        <p style={{fontSize:14,color:"#666",margin:"0 0 28px"}}>Exclusive pre-loved pieces from verified celebrities</p>
+        <div style={{display:"grid",gridTemplateColumns:"1fr",gap:10}} className="celeb-list"><style>{`@media(min-width:768px){.celeb-list{grid-template-columns:repeat(2,1fr) !important}}`}</style>
+          {CELEBS.map(cb=>(
+            <div key={cb.id} onClick={()=>sVC(cb)} style={{display:"flex",alignItems:"center",gap:14,padding:"16px 20px",cursor:"pointer",background:C.card,borderRadius:14,border:"1px solid "+C.bdr,transition:"border-color .2s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#444"} onMouseLeave={e=>e.currentTarget.style.borderColor=C.bdr}>
+              <div style={{width:48,height:48,borderRadius:"50%",background:"linear-gradient(135deg,#fff,#ccc)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:18,fontWeight:800,color:"#000",fontFamily:FH}}>{cb.name[0]}</span></div>
+              <div style={{flex:1}}><p style={{fontSize:15,fontWeight:700,margin:"0 0 2px"}}>{cb.name} <span style={{color:"#666"}}>✓</span></p><p style={{fontSize:12,color:"#555",margin:0}}>{cb.bio} · {cb.followers} · {cb.items.length} items</p></div>
+              <span style={{color:"#444",fontSize:18}}>→</span>
+            </div>
+          ))}
+        </div>
+      </div></Wrap>
+    </div>);
+  }
+
+  // ── SELL ──
+  if(tab==="sell") return(<div style={{minHeight:"100vh",background:C.bg}}><style>{CSS}</style><Nav/><Toast msg={toast}/>
+    <Wrap narrow><div style={{animation:"fadeIn .3s",padding:"32px 0 48px"}}>
+      <h1 style={{fontFamily:FH,fontSize:28,fontWeight:700,margin:"0 0 4px"}}>Sell Your Item</h1>
+      <p style={{fontSize:14,color:"#666",margin:"0 0 28px"}}>Upload photos for authentication review</p>
+      <div style={{background:C.card,borderRadius:16,padding:24,border:"1px solid "+C.bdr,marginBottom:24}}>
+        <label style={{display:"block",fontSize:12,fontWeight:600,marginBottom:8,color:"#aaa"}}>Photos *</label>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}} className="photo-grid"><style>{`@media(min-width:640px){.photo-grid{grid-template-columns:repeat(6,1fr) !important}}`}</style>
+          {(sellF.photos||[]).map((ph,i)=><div key={i} style={{aspectRatio:"1",borderRadius:10,overflow:"hidden",position:"relative",border:"1px solid "+C.bdr}}>
+            <img src={ph} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+            <button onClick={()=>{const np=[...(sellF.photos||[])];np.splice(i,1);sSf({...sellF,photos:np})}} style={{position:"absolute",top:4,right:4,width:20,height:20,borderRadius:"50%",background:"rgba(0,0,0,.8)",border:"none",color:"#fff",fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+          </div>)}
+          {(sellF.photos||[]).length<8&&<label style={{aspectRatio:"1",borderRadius:10,border:"2px dashed "+C.bdr2,background:C.card2,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"border-color .2s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#555"} onMouseLeave={e=>e.currentTarget.style.borderColor=C.bdr2}>
+            <CamIc/><span style={{fontSize:9,color:"#555",marginTop:4}}>Add</span>
+            <input type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>{const files=Array.from(e.target.files||[]);files.forEach(f=>{const r=new FileReader();r.onload=ev=>{sSf(prev=>({...prev,photos:[...(prev.photos||[]),ev.target.result].slice(0,8)}))};r.readAsDataURL(f)});e.target.value=""}}/>
+          </label>}
+        </div>
+        <p style={{fontSize:11,color:"#444",marginTop:6}}>{(sellF.photos||[]).length}/8 photos · First photo is the cover</p>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}} className="sell-form"><style>{`@media(max-width:500px){.sell-form{grid-template-columns:1fr !important}}`}</style>
+        <div style={{gridColumn:"1/-1"}}><label style={{display:"block",fontSize:12,fontWeight:600,marginBottom:6,color:"#aaa"}}>Brand *</label><select value={sellF.brand||""} onChange={e=>sSf({...sellF,brand:e.target.value})} style={{...inp,appearance:"none"}}><option value="">Select brand</option>{BRANDS.map(b=><option key={b}>{b}</option>)}</select></div>
+        <div style={{gridColumn:"1/-1"}}><label style={{display:"block",fontSize:12,fontWeight:600,marginBottom:6,color:"#aaa"}}>Item Name *</label><input value={sellF.name||""} onChange={e=>sSf({...sellF,name:e.target.value})} placeholder="e.g. Classic Flap Medium" style={inp}/></div>
+        <div><label style={{display:"block",fontSize:12,fontWeight:600,marginBottom:6,color:"#aaa"}}>Category</label><select value={sellF.cat||""} onChange={e=>sSf({...sellF,cat:e.target.value})} style={{...inp,appearance:"none"}}><option value="">Select</option>{CATS.filter(c=>c!=="All").map(c=><option key={c}>{c}</option>)}</select></div>
+        <div><label style={{display:"block",fontSize:12,fontWeight:600,marginBottom:6,color:"#aaa"}}>Condition</label><select value={sellF.cond||""} onChange={e=>sSf({...sellF,cond:e.target.value})} style={{...inp,appearance:"none"}}><option value="">Select</option>{CONDS.map(c=><option key={c}>{c}</option>)}</select></div>
+        <div><label style={{display:"block",fontSize:12,fontWeight:600,marginBottom:6,color:"#aaa"}}>Size</label><input value={sellF.size||""} onChange={e=>sSf({...sellF,size:e.target.value})} placeholder="e.g. 38" style={inp}/></div>
+        <div><label style={{display:"block",fontSize:12,fontWeight:600,marginBottom:6,color:"#aaa"}}>Color</label><input value={sellF.color||""} onChange={e=>sSf({...sellF,color:e.target.value})} placeholder="e.g. Black" style={inp}/></div>
+        <div style={{gridColumn:"1/-1"}}><label style={{display:"block",fontSize:12,fontWeight:600,marginBottom:6,color:"#aaa"}}>Description</label><textarea value={sellF.desc||""} onChange={e=>sSf({...sellF,desc:e.target.value})} placeholder="Describe item history, wear, accessories included..." rows={3} style={{...inp,resize:"vertical",lineHeight:1.5}}/></div>
+      </div>
+      <Btn primary full disabled={!(sellF.brand&&sellF.name&&(sellF.photos||[]).length>0)} onClick={submitListing} style={{marginBottom:32}}>Submit for Review</Btn>
+      {d.pickups.length>0&&<div>
+        <h3 style={{fontSize:16,fontWeight:700,margin:"0 0 14px"}}>Your Submissions</h3>
+        {d.pickups.map(pk=><div key={pk.id} style={{display:"flex",gap:12,alignItems:"center",padding:"14px 16px",marginBottom:8,background:C.card,borderRadius:12,border:"1px solid "+C.bdr}}>
+          {pk.photo?<div style={{width:48,height:56,borderRadius:8,overflow:"hidden",flexShrink:0}}><img src={pk.photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/></div>:<div style={{width:48,height:56,borderRadius:8,background:"#1C1C1C",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}><CamIc/></div>}
+          <div style={{flex:1}}><p style={{fontSize:13,fontWeight:600,margin:"0 0 2px"}}>{pk.brand} — {pk.name}</p><p style={{fontSize:11,color:"#555",margin:0}}>{pk.date}{pk.photoCount?" · "+pk.photoCount+" photos":""}</p></div>
+          <Badge t={pk.status==="under_review"?"Reviewing":pk.status==="approved"?"Approved ✓":"Rejected"} c={pk.status==="approved"?C.grn:pk.status==="rejected"?C.red:"#888"}/>
+        </div>)}
+      </div>}
+    </div></Wrap>
+  </div>);
+
+  // ── ME / ACCOUNT ──
+  if(tab==="me"){
+    const savedItems=live.filter(p=>isSv(p));
+    const myBids=d.myBids||[];
+    const myPurch=(d.orders||[]).filter(o=>o.type==="purchase");
+    const myItems=d.products.filter(p=>p.sellerId==="s1");
+
+    // Admin
+    if(subPage==="admin"){
+      const pending=d.pickups.filter(p=>p.status==="under_review");
+      const history=d.pickups.filter(p=>p.status!=="under_review");
+      const allOrders=d.orders||[];
+      const allOffers=d.products.flatMap(p=>(p.offers||[]).map(o=>({...o,prod:p})));
+      const pendingOffers=allOffers.filter(o=>o.status==="pending");
+      return(<div style={{minHeight:"100vh",background:C.bg}}><style>{CSS}</style><Nav/><Toast msg={toast}/>
+        <Wrap><div style={{animation:"fadeIn .3s",padding:"32px 0 48px"}}>
+          <button onClick={()=>sSub(null)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:6,color:"#888",fontSize:13,marginBottom:20,fontFamily:FB}}><BackIc/> Back</button>
+          <h1 style={{fontFamily:FH,fontSize:28,fontWeight:700,margin:"0 0 20px"}}>Admin Panel</h1>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:24}} className="admin-stats"><style>{`@media(min-width:640px){.admin-stats{grid-template-columns:repeat(4,1fr) !important}}`}</style>
+            {[{l:"Review",v:pending.length,c:C.red},{l:"Live",v:live.length,c:C.grn},{l:"Orders",v:allOrders.length,c:C.bl},{l:"Offers",v:pendingOffers.length,c:"#fff"}].map((s,i)=><div key={i} style={{textAlign:"center",padding:16,background:C.card,borderRadius:12,border:"1px solid "+C.bdr}}><p style={{fontSize:24,fontWeight:800,color:s.c,margin:"0 0 2px"}}>{s.v}</p><p style={{fontSize:11,color:"#555",margin:0}}>{s.l}</p></div>)}
+          </div>
+          <div style={{display:"flex",gap:4,marginBottom:20,borderBottom:"1px solid "+C.bdr}}>
+            {[{k:"review",l:"Review"},{k:"orders",l:"Orders"},{k:"offers",l:"Offers"}].map(t=><button key={t.k} onClick={()=>sATab(t.k)} style={{padding:"10px 20px",border:"none",background:"none",cursor:"pointer",fontSize:13,fontWeight:aTab===t.k?700:400,color:aTab===t.k?"#fff":"#666",borderBottom:aTab===t.k?"2px solid #fff":"2px solid transparent",fontFamily:FB}}>{t.l}</button>)}
+          </div>
+          {aTab==="review"&&<div>
+            {pending.length===0&&<div style={{textAlign:"center",padding:40,background:C.card,borderRadius:14,border:"1px solid "+C.bdr}}><p style={{fontSize:14,fontWeight:600,color:"#aaa"}}>All clear — no items to review</p></div>}
+            {pending.map(pk=><div key={pk.id} style={{background:C.card,borderRadius:14,border:"1px solid "+C.bdr,padding:20,marginBottom:12}}>
+              <div style={{display:"flex",gap:14,marginBottom:14}}>
+                {pk.photo?<div style={{width:80,height:96,borderRadius:10,overflow:"hidden",flexShrink:0}}><img src={pk.photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/></div>:<div style={{width:80,height:96,borderRadius:10,background:"#1C1C1C",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}><CamIc/></div>}
+                <div style={{flex:1}}>
+                  <p style={{fontSize:10,fontWeight:700,letterSpacing:2,color:"#555",margin:"0 0 3px"}}>{pk.brand}</p>
+                  <p style={{fontSize:16,fontWeight:600,margin:"0 0 6px"}}>{pk.name}</p>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:4}}>{pk.cat&&<Badge t={pk.cat} c="#888"/>}{pk.cond&&<Badge t={pk.cond} c={C.bl}/>}{pk.color&&<Badge t={pk.color} c="#666"/>}</div>
+                  {pk.desc&&<p style={{fontSize:12,color:"#888",margin:"6px 0 0",lineHeight:1.4}}>{pk.desc}</p>}
+                  <p style={{fontSize:11,color:"#444",margin:"6px 0 0"}}>{pk.date}{pk.seller?" · "+pk.seller:""}</p>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:10}}>
+                <Btn primary sm onClick={()=>{sAD({pkId:pk.id,price:""});sAM("approve")}}>Approve & Price</Btn>
+                <Btn danger sm outline onClick={()=>{sAD({pkId:pk.id,reason:""});sAM("reject")}} style={{background:"transparent",border:"1.5px solid "+C.red}}>Reject</Btn>
+              </div>
+            </div>)}
+            {history.length>0&&<div style={{marginTop:24}}><h3 style={{fontSize:16,fontWeight:700,margin:"0 0 12px"}}>History</h3>
+              {history.map(pk=><div key={pk.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",marginBottom:6,background:C.card,borderRadius:10,border:"1px solid "+C.bdr}}>
+                <div><p style={{fontSize:13,fontWeight:600,margin:"0 0 2px"}}>{pk.brand} — {pk.name}</p><p style={{fontSize:11,color:"#444",margin:0}}>{pk.date}{pk.price?" · "+fmt(pk.price):""}</p></div>
+                <Badge t={pk.status==="approved"?"Approved ✓":"Rejected ✗"} c={pk.status==="approved"?C.grn:C.red}/>
+              </div>)}
+            </div>}
+          </div>}
+          {aTab==="orders"&&<div>
+            {allOrders.map(o=><div key={o.id} style={{background:C.card,borderRadius:12,padding:16,marginBottom:10,border:"1px solid "+C.bdr}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+                <div><p style={{fontSize:10,fontWeight:700,letterSpacing:1.5,margin:"0 0 2px",color:"#666"}}>{o.brand}</p><p style={{fontSize:14,margin:"0 0 2px"}}>{o.name}</p><p style={{fontSize:11,color:"#444",margin:0}}>{o.type} · {o.tracking||o.id}</p></div>
+                <Badge t={o.status==="paid"?"Paid":o.status==="delivering"?"Shipping":o.status==="delivered"?"Done":"Pending"} c={o.status==="paid"||o.status==="delivered"?C.grn:o.status==="delivering"?C.bl:"#fff"}/>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:10,borderTop:"1px solid "+C.bdr}}>
+                <span style={{fontSize:16,fontWeight:700}}>{fmt(o.price)}</span>
+                <div style={{display:"flex",gap:6}}>
+                  {o.status==="processing"&&<Btn sm onClick={()=>adminUpdateOrder(o.id,"delivering")} style={{background:C.bl,color:"#000"}}>Ship</Btn>}
+                  {o.status==="delivering"&&<Btn sm onClick={()=>adminUpdateOrder(o.id,"delivered")} style={{background:C.grn,color:"#000"}}>Delivered</Btn>}
+                </div>
+              </div>
+            </div>)}
+          </div>}
+          {aTab==="offers"&&<div>
+            {pendingOffers.length===0&&<p style={{color:"#555",fontSize:13}}>No pending offers</p>}
+            {pendingOffers.map(o=><div key={o.id} style={{background:C.card,borderRadius:12,padding:16,marginBottom:10,border:"1px solid "+C.bdr}}>
+              <p style={{fontSize:10,fontWeight:700,letterSpacing:1.5,margin:"0 0 2px",color:"#666"}}>{o.prod.brand}</p><p style={{fontSize:14,margin:"0 0 6px"}}>{o.prod.name}</p>
+              <div style={{display:"flex",gap:20,fontSize:12,marginBottom:4}}><span style={{color:"#555"}}>Listed: <b style={{color:C.wh}}>{fmt(o.prod.price)}</b></span><span style={{color:"#555"}}>Offered: <b style={{color:C.wh}}>{fmt(o.amt)}</b></span></div>
+              <p style={{fontSize:11,color:"#444",margin:0}}>From: {o.buyer} · {o.t}</p>
+            </div>)}
+          </div>}
+        </div></Wrap>
+        {aModal==="approve"&&<Modal title="Approve & Price" onClose={()=>sAM(null)}>
+          <p style={{fontSize:13,color:"#aaa",margin:"0 0 14px"}}>Set listing price. Seller will be notified.</p>
+          <input value={aData.price||""} onChange={e=>sAD({...aData,price:e.target.value})} type="number" placeholder="Price ($)" style={{...inp,fontSize:20,fontWeight:700,marginBottom:14}}/>
+          <Btn primary full disabled={!aData.price} onClick={()=>{if(aData.price){adminApprove(aData.pkId,aData.price);sAM(null)}}}>Approve & List</Btn>
+        </Modal>}
+        {aModal==="reject"&&<Modal title="Reject Item" onClose={()=>sAM(null)}>
+          <p style={{fontSize:13,color:"#aaa",margin:"0 0 14px"}}>Reason for rejection:</p>
+          <textarea value={aData.reason||""} onChange={e=>sAD({...aData,reason:e.target.value})} placeholder="Reason..." rows={3} style={{...inp,resize:"vertical",marginBottom:14}}/>
+          <Btn danger full onClick={()=>{adminReject(aData.pkId,aData.reason);sAM(null)}}>Reject Item</Btn>
+        </Modal>}
+      </div>);
+    }
+
+    // Sub pages
+    if(subPage==="saved") return(<div style={{minHeight:"100vh",background:C.bg}}><style>{CSS}</style><Nav/>
+      <Wrap><div style={{padding:"32px 0 48px",animation:"fadeIn .3s"}}>
+        <button onClick={()=>sSub(null)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:6,color:"#888",fontSize:13,marginBottom:20,fontFamily:FB}}><BackIc/> Back</button>
+        <h1 style={{fontFamily:FH,fontSize:24,fontWeight:700,margin:"0 0 20px"}}>Saved Items</h1>
+        {savedItems.length===0?<div style={{textAlign:"center",padding:48,background:C.card,borderRadius:16,border:"1px solid "+C.bdr}}><p style={{fontSize:14,color:"#aaa"}}>Nothing saved yet</p></div>:
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14}} className="saved-grid"><style>{`@media(min-width:768px){.saved-grid{grid-template-columns:repeat(3,1fr) !important}}`}</style>{savedItems.map(p=><Card key={p.id} p={p} onTap={x=>{sSub(null);sS(x)}} onSave={tSave} saved={true} wide/>)}</div>}
+      </div></Wrap>
+    </div>);
+
+    if(subPage==="bids") return(<div style={{minHeight:"100vh",background:C.bg}}><style>{CSS}</style><Nav/>
+      <Wrap narrow><div style={{padding:"32px 0 48px",animation:"fadeIn .3s"}}>
+        <button onClick={()=>sSub(null)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:6,color:"#888",fontSize:13,marginBottom:20,fontFamily:FB}}><BackIc/> Back</button>
+        <h1 style={{fontFamily:FH,fontSize:24,fontWeight:700,margin:"0 0 20px"}}>My Bids</h1>
+        {myBids.map(b=>{const pr=d.products.find(p=>p.id===b.prodId);if(!pr)return null;const w=b.status==="winning";return(
+          <div key={b.prodId} style={{background:C.card,borderRadius:12,padding:14,marginBottom:10,border:"1px solid "+(w?C.grn+"40":C.bdr),display:"flex",gap:12,cursor:"pointer"}} onClick={()=>{sSub(null);sS(pr)}}>
+            <div style={{width:56,height:68,borderRadius:8,background:"#1A1A1A",flexShrink:0,overflow:"hidden"}}><Img src={pr.photo}/></div>
+            <div style={{flex:1}}><p style={{fontSize:10,fontWeight:700,letterSpacing:1.5,margin:"0 0 2px",color:"#555"}}>{pr.brand}</p><p style={{fontSize:13,margin:"0 0 6px"}}>{pr.name}</p>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:16,fontWeight:700}}>{fmt(b.amt)}</span><Badge t={w?"WINNING":"OUTBID"} c={w?C.grn:C.red}/></div>
+            </div>
+          </div>)})}
+      </div></Wrap>
+    </div>);
+
+    if(subPage==="purch") return(<div style={{minHeight:"100vh",background:C.bg}}><style>{CSS}</style><Nav/>
+      <Wrap narrow><div style={{padding:"32px 0 48px",animation:"fadeIn .3s"}}>
+        <button onClick={()=>sSub(null)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:6,color:"#888",fontSize:13,marginBottom:20,fontFamily:FB}}><BackIc/> Back</button>
+        <h1 style={{fontFamily:FH,fontSize:24,fontWeight:700,margin:"0 0 20px"}}>My Purchases</h1>
+        {myPurch.length===0?<div style={{textAlign:"center",padding:48,background:C.card,borderRadius:16,border:"1px solid "+C.bdr}}><p style={{fontSize:14,color:"#aaa"}}>No purchases yet</p></div>:
+        myPurch.map(o=><div key={o.id} style={{background:C.card,borderRadius:12,padding:16,marginBottom:10,border:"1px solid "+C.bdr}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+            <div><p style={{fontSize:10,fontWeight:700,letterSpacing:1.5,margin:"0 0 2px",color:"#555"}}>{o.brand}</p><p style={{fontSize:14,margin:"0 0 2px"}}>{o.name}</p>{o.tracking&&<p style={{fontSize:11,color:"#444",margin:0}}>Tracking: {o.tracking}{o.eta?" · ETA: "+o.eta:""}</p>}</div>
+            <Badge t={o.status==="processing"?"Processing":o.status==="delivering"?"Shipping":o.status==="delivered"?"Delivered":"Pending"} c={o.status==="delivered"?C.grn:o.status==="delivering"?C.bl:"#fff"}/>
+          </div>
+          <div style={{paddingTop:10,borderTop:"1px solid "+C.bdr}}><span style={{fontSize:16,fontWeight:700}}>{fmt(o.price)}</span></div>
+        </div>)}
+      </div></Wrap>
+    </div>);
+
+    if(subPage==="closet") return(<div style={{minHeight:"100vh",background:C.bg}}><style>{CSS}</style><Nav/>
+      <Wrap><div style={{padding:"32px 0 48px",animation:"fadeIn .3s"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}><button onClick={()=>sSub(null)} style={{background:"none",border:"none",cursor:"pointer"}}><BackIc/></button><h1 style={{fontFamily:FH,fontSize:24,fontWeight:700,margin:0}}>My Closet</h1></div>
+          <Btn primary sm onClick={()=>{sSub(null);go("sell")}}>+ List Item</Btn>
+        </div>
+        {myItems.map(p=>(
+          <div key={p.id} onClick={()=>{sSub(null);sS(p)}} style={{display:"flex",gap:12,padding:"14px 16px",marginBottom:8,background:C.card,borderRadius:12,border:"1px solid "+C.bdr,cursor:"pointer",transition:"border-color .2s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#444"} onMouseLeave={e=>e.currentTarget.style.borderColor=C.bdr}>
+            <div style={{width:56,height:68,borderRadius:8,background:"#1A1A1A",flexShrink:0,overflow:"hidden"}}><Img src={p.photo}/></div>
+            <div style={{flex:1}}><p style={{fontSize:10,fontWeight:700,letterSpacing:1.5,margin:"0 0 2px",color:"#555"}}>{p.brand}</p><p style={{fontSize:13,margin:"0 0 4px"}}>{p.name}</p><span style={{fontSize:15,fontWeight:700}}>{fmt(p.price)}</span></div>
+            <Badge t={p.status.toUpperCase()} c={p.status==="live"?C.grn:"#888"}/>
+          </div>
+        ))}
+      </div></Wrap>
+    </div>);
+
+    // Account dashboard
+    return(<div style={{minHeight:"100vh",background:C.bg}}><style>{CSS}</style><Nav/><Toast msg={toast}/>
+      <Wrap narrow><div style={{padding:"32px 0 48px",animation:"fadeIn .3s"}}>
+        <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:28}}>
+          <div style={{width:56,height:56,borderRadius:"50%",background:"linear-gradient(135deg,#fff,#ccc)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:20,fontWeight:700,color:"#000",fontFamily:FH}}>{seller.name[0]}</span></div>
+          <div style={{flex:1}}><h2 style={{fontSize:20,fontWeight:700,margin:"0 0 2px"}}>{seller.name}</h2><p style={{fontSize:13,color:"#555",margin:0}}>{tier.n} Seller · {seller.sales} sales</p></div>
+          <Badge t={tier.n.toUpperCase()} c="#fff"/>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:20}}>
+          {[{l:"Earned",v:fmt(seller.earnings),c:C.grn},{l:"Points",v:seller.points,c:"#fff"},{l:"Commission",v:tier.comm+"%",c:C.bl}].map((s,i)=><div key={i} style={{background:C.card,borderRadius:12,padding:"16px 10px",textAlign:"center",border:"1px solid "+C.bdr}}><p style={{fontSize:10,color:"#555",margin:"0 0 4px",fontWeight:600}}>{s.l}</p><p style={{fontSize:20,fontWeight:800,color:s.c,margin:0}}>{s.v}</p></div>)}
+        </div>
+        <div style={{background:C.card,borderRadius:12,padding:16,marginBottom:20,border:"1px solid "+C.bdr}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}><span style={{fontSize:12,fontWeight:700}}>Loyalty Points</span>{nextT&&<span style={{fontSize:11,color:"#555"}}>{nextT.min-seller.points} to {nextT.n}</span>}</div>
+          <div style={{height:6,background:"#222",borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:pctN+"%",background:"#fff",borderRadius:3}}/></div>
+        </div>
+        {inOffers.length>0&&<div style={{background:C.card,borderRadius:12,padding:16,marginBottom:20,border:"1px solid "+C.bdr}}>
+          <h3 style={{fontSize:14,fontWeight:700,margin:"0 0 12px"}}>Incoming Offers ({inOffers.length})</h3>
+          {inOffers.map(o=><div key={o.id} style={{background:C.card2,borderRadius:10,padding:14,marginBottom:8}}>
+            <p style={{fontSize:13,fontWeight:600,margin:"0 0 4px"}}>{o.prod.brand} — {o.prod.name}</p>
+            <p style={{fontSize:11,color:"#555",margin:"0 0 8px"}}>Listed {fmt(o.prod.price)} · Offered <b style={{color:"#fff"}}>{fmt(o.amt)}</b></p>
+            <div style={{display:"flex",gap:8}}>
+              <Btn primary sm onClick={()=>acceptOffer(o.prod.id,o.id)}>Accept</Btn>
+              <Btn sm outline onClick={()=>rejectOffer(o.prod.id,o.id)} style={{borderColor:C.red,color:C.red}}>Decline</Btn>
+            </div>
+          </div>)}
+        </div>}
+        <div style={{background:C.card,borderRadius:12,border:"1px solid "+C.bdr,overflow:"hidden",marginBottom:16}}>
+          {[{l:"Saved Items",k:"saved",n:savedItems.length},{l:"My Bids",k:"bids",n:myBids.length},{l:"My Closet",k:"closet",n:myItems.length},{l:"Purchases",k:"purch",n:myPurch.length}].map((m,i)=>(
+            <div key={i} onClick={()=>sSub(m.k)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px",borderTop:i?"1px solid "+C.bdr:"none",cursor:"pointer",transition:"background .15s"}} onMouseEnter={e=>e.currentTarget.style.background=C.card2} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+              <span style={{fontSize:14,fontWeight:500}}>{m.l}</span>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>{m.n>0&&<span style={{fontSize:12,color:"#555"}}>{m.n}</span>}<span style={{color:"#444"}}>→</span></div>
+            </div>
+          ))}
+        </div>
+        <div onClick={()=>sSub("admin")} style={{background:"#000",borderRadius:12,padding:"16px 20px",marginBottom:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",border:"1px solid "+C.bdr,transition:"border-color .2s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#444"} onMouseLeave={e=>e.currentTarget.style.borderColor=C.bdr}>
+          <div><p style={{fontSize:14,fontWeight:700,margin:0}}>Admin Panel</p><p style={{fontSize:12,color:"#555",margin:"2px 0 0"}}>Review items, manage orders & offers</p></div>
+          {d.pickups.filter(p=>p.status==="under_review").length>0&&<span style={{background:C.red,color:C.wh,fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:10}}>{d.pickups.filter(p=>p.status==="under_review").length}</span>}
+        </div>
+        <Btn full outline onClick={async()=>{await ST.set(KEY,null);sD(INIT);notify("Reset done")}} style={{borderColor:"#333",color:C.red,marginBottom:8}}>Reset Demo Data</Btn>
+        <p style={{fontSize:11,color:"#333",textAlign:"center",marginTop:12,letterSpacing:2}}>WIMC v3.0 · Web</p>
+      </div></Wrap>
+    </div>);
+  }
+  return null;
+}

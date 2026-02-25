@@ -1,0 +1,345 @@
+import { useState, useEffect, useCallback } from "react";
+import { ST, KEY } from "../shared/storage.js";
+import { fmt, CATS_ADMIN as CATS, BRANDS, CONDS, FH, FB, FW, CA as C } from "../shared/constants.js";
+import { STAGES, INIT } from "../shared/data.js";
+
+const CSS=`*{box-sizing:border-box;margin:0;padding:0}body{background:${C.bg};color:${C.wh};font-family:${FB}}::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:${C.bg}}::-webkit-scrollbar-thumb{background:#222;border-radius:3px}@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}@keyframes toastIn{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}input,select,textarea{color:${C.wh};font-family:${FB}}input::placeholder,textarea::placeholder{color:#444}select option{background:#1C1C1C;color:#fff}`;
+
+// ICONS
+const IC={
+  dash:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>,
+  eye:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+  items:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>,
+  truck:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
+  cam:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>,
+  shield:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  upload:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>,
+  list:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>,
+  check:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>,
+  x:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+  back:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>,
+  phone:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>,
+  map:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+  clock:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>,
+  menu:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>,
+  close:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+};
+
+const Badge=({t,c=C.wh,lg})=><span style={{fontSize:lg?11:10,fontWeight:700,padding:lg?"4px 12px":"3px 10px",background:c+"18",color:c,borderRadius:4,letterSpacing:.3,whiteSpace:"nowrap",display:"inline-block"}}>{t}</span>;
+const Toast=({msg})=>msg?<div style={{position:"fixed",top:20,right:24,background:C.wh,color:"#000",padding:"12px 24px",borderRadius:12,fontSize:13,fontWeight:600,zIndex:999,animation:"toastIn .3s",boxShadow:"0 8px 32px rgba(0,0,0,.5)"}}>{msg}</div>:null;
+const Btn=({children,primary,danger,outline,full,sm,xs,onClick,disabled,style:sx})=>{
+  const base={fontFamily:FB,fontWeight:700,cursor:disabled?"default":"pointer",border:"none",borderRadius:xs?6:sm?8:10,fontSize:xs?10:sm?11:13,transition:"all .15s",opacity:disabled?.4:1,display:"inline-flex",alignItems:"center",gap:6};
+  const v=danger?{background:C.red,color:C.wh,padding:xs?"5px 10px":sm?"8px 16px":"11px 24px"}:outline?{background:"transparent",border:"1.5px solid #333",color:C.wh,padding:xs?"5px 10px":sm?"8px 16px":"11px 24px"}:primary?{background:C.wh,color:"#000",padding:xs?"5px 10px":sm?"8px 16px":"11px 24px"}:{background:"#222",color:C.wh,padding:xs?"5px 10px":sm?"8px 16px":"11px 24px"};
+  return <button onClick={disabled?undefined:onClick} style={{...base,...v,width:full?"100%":undefined,...sx}}>{children}</button>;
+};
+const Input=({label,value,onChange,type="text",placeholder,textarea,select,options,style:sx})=>(
+  <div style={{marginBottom:14,...sx}}>
+    {label&&<label style={{display:"block",fontSize:10,fontWeight:600,marginBottom:5,color:"#666",letterSpacing:1}}>{label}</label>}
+    {select?<select value={value} onChange={e=>onChange(e.target.value)} style={{width:"100%",background:C.card2,border:"1px solid "+C.bdr2,borderRadius:8,padding:"10px 12px",fontSize:13,fontFamily:FB,appearance:"none",color:C.wh,outline:"none"}}><option value="">Select...</option>{(options||[]).map(o=><option key={o} value={o}>{o}</option>)}</select>
+    :textarea?<textarea value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} rows={3} style={{width:"100%",background:C.card2,border:"1px solid "+C.bdr2,borderRadius:8,padding:"10px 12px",fontSize:13,fontFamily:FB,outline:"none",resize:"vertical",lineHeight:1.5,color:C.wh}}/>
+    :<input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{width:"100%",background:C.card2,border:"1px solid "+C.bdr2,borderRadius:8,padding:"10px 12px",fontSize:13,fontFamily:FB,outline:"none",color:C.wh}}/>}
+  </div>
+);
+const StatCard=({label,value,c=C.wh,ic})=>(
+  <div style={{background:C.card,borderRadius:12,padding:"18px 16px",border:"1px solid "+C.bdr2}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}><div><p style={{fontSize:10,color:"#444",margin:"0 0 6px",fontWeight:600,letterSpacing:1}}>{label}</p><p style={{fontSize:26,fontWeight:800,color:c,margin:0,lineHeight:1}}>{value}</p></div>{ic&&<div style={{color:"#222"}}>{ic}</div>}</div>
+  </div>
+);
+const Progress=({stage})=>{
+  const s=STAGES[stage];if(!s)return null;
+  const steps=["Review","Price","Pickup","Driver","Auth","Photos","Live"];const cur=s.step;
+  return(<div style={{display:"flex",alignItems:"center",gap:0,marginBottom:16}}>{steps.map((st,i)=>{
+    const done=cur>i+1;const active=cur===i+1;
+    return <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
+      <div style={{display:"flex",alignItems:"center",width:"100%"}}>{i>0&&<div style={{flex:1,height:2,background:done?"#333":C.bdr}}/>}<div style={{width:20,height:20,borderRadius:"50%",background:done?s.color+"30":active?s.color+"40":"#1A1A1A",border:"2px solid "+(done||active?s.color:C.bdr2),display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{done&&<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={s.color} strokeWidth="4"><polyline points="20 6 9 17 4 12"/></svg>}{active&&<div style={{width:6,height:6,borderRadius:"50%",background:s.color}}/>}</div>{i<steps.length-1&&<div style={{flex:1,height:2,background:done?"#333":C.bdr}}/>}</div>
+      <span style={{fontSize:7,color:done||active?"#888":"#333",marginTop:4,fontWeight:active?700:400,whiteSpace:"nowrap"}}>{st}</span>
+    </div>})}</div>);
+};
+const Timeline=({history})=>(<div style={{position:"relative",paddingLeft:16}}><div style={{position:"absolute",left:5,top:4,bottom:4,width:1,background:C.bdr2}}/>{(history||[]).map((h,i)=><div key={i} style={{display:"flex",gap:10,marginBottom:10,position:"relative"}}><div style={{width:10,height:10,borderRadius:"50%",background:i===0?C.wh:"#333",border:"2px solid "+(i===0?"#fff":"#333"),marginTop:3,flexShrink:0,position:"relative",zIndex:1}}/><div><p style={{fontSize:11,fontWeight:600,margin:0,color:i===0?"#fff":"#888"}}>{h.msg}</p><p style={{fontSize:9,color:"#444",margin:0}}>{h.t}</p></div></div>)}</div>);
+
+export default function App(){
+  const[d,sD]=useState(null);const[rdy,sRdy]=useState(false);
+  const[page,sPage]=useState("dashboard");const[toast,sToast]=useState(null);
+  const[mData,sMData]=useState({});const[sideOpen,sSide]=useState(false);const[detail,sDetail]=useState(null);
+  const[logged,sLogged]=useState(false);const[loginF,sLoginF]=useState({user:"",pass:""});
+
+  useEffect(()=>{(async()=>{const v=await ST.get(KEY);if(v){
+    // Merge: ensure workflow & products arrays exist
+    const merged={...INIT,...v,workflow:[...(v.workflow||[])],products:[...(v.products||INIT.products)],notifications:[...(v.notifications||[])],sellers:[...(v.sellers||INIT.sellers)],celebs:[...(v.celebs||INIT.celebs)],orders:[...(v.orders||INIT.orders)]};
+    sD(merged);
+  } else {sD(INIT);await ST.set(KEY,INIT)}sRdy(true)})()},[]);
+  // Poll for changes from web app every 3s
+  useEffect(()=>{if(!logged)return;const iv=setInterval(async()=>{const v=await ST.get(KEY);if(v)sD(v)},3000);return()=>clearInterval(iv)},[logged]);
+
+  const sv=useCallback(async v=>{sD(v);await ST.set(KEY,v)},[]);
+  const notify=m=>{sToast(m);setTimeout(()=>sToast(null),2200)};
+  const wf=d?.workflow||[];
+  const prods=d?.products||[];
+
+  const updWf=(id,changes,histMsg)=>{
+    const nd={...d,workflow:wf.map(it=>it.id===id?{...it,...changes,history:[{t:"Just now",msg:histMsg},...(it.history||[])]}:it)};
+    sv(nd);
+    if(detail&&detail.id===id)sDetail({...detail,...changes,history:[{t:"Just now",msg:histMsg},...(detail.history||[])]});
+  };
+
+  // When admin lists item -> create product in shared products array + add notification
+  const listItem=(it,proPhotos,proDesc,finalPrice)=>{
+    const np={id:"p"+Date.now(),sellerId:it.sellerId,brand:it.brand,name:it.name,cat:it.cat,price:Number(finalPrice),cond:it.cond,status:"live",bidding:false,bids:[],offers:[],saved:[],proPhotos:proPhotos||[],proDesc:proDesc||"",fromWorkflow:it.id};
+    const notif={id:"n"+Date.now(),type:"listed",sellerId:it.sellerId,msg:it.brand+" "+it.name+" is now live on the marketplace at "+fmt(Number(finalPrice)),t:"Just now",read:false};
+    const nd={...d,
+      workflow:wf.map(w=>w.id===it.id?{...w,stage:"listed",proPhotos,proDesc,suggestedPrice:Number(finalPrice),history:[{t:"Just now",msg:"Item listed on "+it.userName+"'s closet"},...(w.history||[])]}:w),
+      products:[...prods,np],
+      notifications:[...(d.notifications||[]),notif]
+    };
+    sv(nd);
+    sDetail({...it,stage:"listed",proPhotos,proDesc,suggestedPrice:Number(finalPrice),history:[{t:"Just now",msg:"Item listed on "+it.userName+"'s closet"},...(it.history||[])]});
+    notify("Item is now LIVE! \ud83c\udf89");
+  };
+
+  if(!rdy||!d) return <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><style>{CSS}</style><div style={{width:16,height:16,border:"2px solid #fff",borderTopColor:"transparent",borderRadius:"50%",animation:"pulse 1.5s infinite"}}/></div>;
+
+  if(!logged) return(
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><style>{CSS}</style>
+      <div style={{width:"100%",maxWidth:380,padding:32,animation:"fadeIn .4s"}}>
+        <div style={{textAlign:"center",marginBottom:36}}>
+          <h1 style={{fontFamily:FH,fontSize:28,fontWeight:700,margin:"0 0 4px",letterSpacing:1}}>WIMC</h1>
+          <p style={{fontFamily:FW,fontSize:16,color:"#666",margin:"0 0 6px"}}>by Dina Bahgat</p>
+          <p style={{fontSize:11,color:"#444",letterSpacing:3,fontWeight:600}}>ADMIN PANEL</p>
+        </div>
+        <div style={{background:C.card,borderRadius:16,padding:28,border:"1px solid "+C.bdr2}}>
+          <Input label="EMAIL" value={loginF.user} onChange={v=>sLoginF({...loginF,user:v})} placeholder="Enter your email"/>
+          <Input label="PASSWORD" value={loginF.pass} onChange={v=>sLoginF({...loginF,pass:v})} type="password" placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"/>
+          {loginF.error&&<p style={{fontSize:11,color:C.red,margin:"-6px 0 10px"}}>{loginF.error}</p>}
+          <Btn primary full onClick={()=>{if(loginF.user==="deenabahgatt@gmail.com"&&loginF.pass==="123"){sLogged(true);sLoginF({user:"",pass:""});notify("Welcome back, Dina")}else{sLoginF({...loginF,error:"Invalid email or password"})}}} style={{marginTop:6}}>Sign In</Btn>
+        </div>
+      </div>
+    </div>
+  );
+
+  const counts={pending:wf.filter(i=>i.stage==="pending_review").length,pickup:wf.filter(i=>i.stage==="pickup_scheduled").length,atOffice:wf.filter(i=>i.stage==="arrived_at_office").length,authPassed:wf.filter(i=>i.stage==="auth_passed").length,listed:wf.filter(i=>i.stage==="listed").length};
+
+  const MENU=[
+    {k:"dashboard",l:"Dashboard",ic:IC.dash},
+    {k:"review",l:"Photo Review",ic:IC.eye,badge:counts.pending},
+    {k:"pickup",l:"Pickups & Drivers",ic:IC.truck,badge:counts.pickup},
+    {k:"auth",l:"Authentication",ic:IC.shield,badge:counts.atOffice},
+    {k:"photoshoot",l:"Photoshoot & List",ic:IC.cam,badge:counts.authPassed},
+    {k:"products",l:"Live Products",ic:IC.items,badge:prods.filter(p=>p.status==="live").length},
+    {k:"all",l:"All Items",ic:IC.list},
+  ];
+
+  const Sidebar=({mobile})=>(
+    <div style={{width:mobile?"100%":250,height:mobile?"auto":"100vh",background:C.side,borderRight:mobile?"none":"1px solid "+C.bdr,padding:"20px 12px",position:mobile?"relative":"sticky",top:0,overflowY:"auto",flexShrink:0}}>
+      <div style={{textAlign:"center",padding:"0 0 20px",borderBottom:"1px solid "+C.bdr}}>
+        <h1 style={{fontFamily:FH,fontSize:20,fontWeight:700,margin:"0 0 2px",letterSpacing:1}}>WIMC</h1>
+        <p style={{fontFamily:FW,fontSize:12,color:"#555",margin:"0 0 2px"}}>by Dina Bahgat</p>
+        <p style={{fontSize:9,color:"#333",letterSpacing:2,fontWeight:700}}>ADMIN PANEL</p>
+      </div>
+      <div style={{padding:"14px 0"}}>{MENU.map(m=>(
+        <div key={m.k} onClick={()=>{sPage(m.k);sSide(false);sDetail(null)}} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,cursor:"pointer",marginBottom:2,background:page===m.k?"#1A1A1A":"transparent",color:page===m.k?"#fff":"#666",transition:"all .15s"}} onMouseEnter={e=>{if(page!==m.k)e.currentTarget.style.background="#141414"}} onMouseLeave={e=>{if(page!==m.k)e.currentTarget.style.background="transparent"}}>
+          {m.ic}<span style={{fontSize:13,fontWeight:page===m.k?600:400,flex:1}}>{m.l}</span>
+          {m.badge>0&&<span style={{fontSize:9,fontWeight:700,background:C.red,color:C.wh,padding:"1px 6px",borderRadius:8,minWidth:18,textAlign:"center"}}>{m.badge}</span>}
+        </div>
+      ))}</div>
+      <div style={{padding:"14px 12px",borderTop:"1px solid "+C.bdr}}>
+        <div onClick={()=>sLogged(false)} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",color:"#444",fontSize:12}} onMouseEnter={e=>e.currentTarget.style.color=C.red} onMouseLeave={e=>e.currentTarget.style.color="#444"}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg> Sign Out
+        </div>
+      </div>
+    </div>
+  );
+
+  const ItemRow=({it,showStage})=>(
+    <div onClick={()=>{sDetail(it);sMData({})}} style={{display:"flex",gap:14,padding:"14px 16px",background:C.card,borderRadius:12,border:"1px solid "+C.bdr2,cursor:"pointer",marginBottom:8,transition:"border-color .15s",alignItems:"center"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#333"} onMouseLeave={e=>e.currentTarget.style.borderColor=C.bdr2}>
+      <div style={{width:52,height:62,borderRadius:8,background:C.card2,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>{it.userPhotos?.[0]||"\ud83d\udcf7"}</div>
+      <div style={{flex:1,minWidth:0}}>
+        <p style={{fontSize:10,fontWeight:700,letterSpacing:1.5,color:"#555",margin:"0 0 2px"}}>{it.brand}</p>
+        <p style={{fontSize:13,fontWeight:500,margin:"0 0 4px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.name}</p>
+        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+          <span style={{fontSize:11,color:"#444"}}>{it.userName}</span>
+          {it.suggestedPrice&&<span style={{fontSize:12,fontWeight:700}}>{fmt(it.suggestedPrice)}</span>}
+          {showStage&&<Badge t={STAGES[it.stage]?.label||it.stage} c={STAGES[it.stage]?.color||"#888"}/>}
+        </div>
+      </div>
+      <span style={{color:"#333",fontSize:16}}>&rarr;</span>
+    </div>
+  );
+
+  // DETAIL VIEW
+  if(detail){const it=items_fresh();function items_fresh(){return (d?.workflow||[]).find(w=>w.id===detail.id)||detail;}const st=STAGES[it.stage]||{};return(
+  <div style={{display:"flex",minHeight:"100vh",background:C.bg}}><style>{CSS}</style><Toast msg={toast}/>
+    <div className="dk-s" style={{display:"block"}}><style>{`@media(max-width:860px){.dk-s{display:none !important}}`}</style><Sidebar/></div>
+    <div className="mb-t" style={{display:"none",position:"fixed",top:0,left:0,right:0,zIndex:300,background:"rgba(10,10,10,.95)",backdropFilter:"blur(16px)",borderBottom:"1px solid "+C.bdr,padding:"12px 16px",alignItems:"center",justifyContent:"space-between"}}><style>{`@media(max-width:860px){.mb-t{display:flex !important}}`}</style>
+      <button onClick={()=>sDetail(null)} style={{background:"none",border:"none",cursor:"pointer"}}>{IC.back}</button>
+      <span style={{fontFamily:FH,fontSize:14,fontWeight:700}}>Details</span><div style={{width:20}}/>
+    </div>
+    <div style={{flex:1,overflow:"auto"}}><div style={{padding:"28px 28px 48px",maxWidth:900}} className="dp"><style>{`@media(max-width:860px){.dp{padding:68px 16px 48px !important}}`}</style>
+      <div style={{animation:"fadeIn .3s"}}>
+        <button onClick={()=>sDetail(null)} className="dk-b" style={{background:"none",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:6,color:"#666",fontSize:13,marginBottom:20,fontFamily:FB}}><style>{`@media(max-width:860px){.dk-b{display:none !important}}`}</style>{IC.back} Back</button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12,marginBottom:20}}>
+          <div><p style={{fontSize:10,fontWeight:700,letterSpacing:2,color:"#555",margin:"0 0 4px"}}>{it.brand}</p><h1 style={{fontFamily:FH,fontSize:24,fontWeight:700,margin:"0 0 6px"}}>{it.name}</h1><div style={{display:"flex",gap:6,flexWrap:"wrap"}}><Badge t={st.label||it.stage} c={st.color||"#888"} lg/>{it.cat&&<Badge t={it.cat} c="#666" lg/>}{it.cond&&<Badge t={it.cond} c={C.bl} lg/>}</div></div>
+          {it.suggestedPrice&&<div style={{textAlign:"right"}}><p style={{fontSize:10,color:"#555",margin:"0 0 2px"}}>Price</p><p style={{fontSize:28,fontWeight:800,margin:0}}>{fmt(it.suggestedPrice)}</p></div>}
+        </div>
+        <Progress stage={it.stage}/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr",gap:16}} className="dg"><style>{`@media(min-width:700px){.dg{grid-template-columns:1fr 1fr !important}}`}</style>
+          <div>
+            <div style={{background:C.card,borderRadius:14,padding:20,border:"1px solid "+C.bdr2,marginBottom:14}}>
+              <h3 style={{fontSize:14,fontWeight:700,margin:"0 0 12px"}}>User Photos</h3>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>{(it.userPhotos||[]).map((ph,i)=><div key={i} style={{aspectRatio:"1",background:C.card2,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,border:"1px solid "+C.bdr2}}>{ph}</div>)}</div>
+              {it.desc&&<p style={{fontSize:12,color:"#888",margin:"12px 0 0",lineHeight:1.5}}><b style={{color:"#aaa"}}>Description:</b> {it.desc}</p>}
+            </div>
+            {(it.proPhotos||[]).length>0&&<div style={{background:C.card,borderRadius:14,padding:20,border:"1px solid "+C.bdr2,marginBottom:14}}>
+              <h3 style={{fontSize:14,fontWeight:700,margin:"0 0 12px"}}>Pro Photos</h3>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>{it.proPhotos.map((ph,i)=><div key={i} style={{aspectRatio:"3/4",borderRadius:8,overflow:"hidden",border:"1px solid "+C.bdr2}}><img src={ph} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/></div>)}</div>
+              {it.proDesc&&<p style={{fontSize:12,color:"#888",margin:"12px 0 0"}}>{it.proDesc}</p>}
+            </div>}
+            <div style={{background:C.card,borderRadius:14,padding:20,border:"1px solid "+C.bdr2,marginBottom:14}}>
+              <h3 style={{fontSize:14,fontWeight:700,margin:"0 0 12px"}}>Seller</h3>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div><p style={{fontSize:10,color:"#444",margin:"0 0 2px"}}>Name</p><p style={{fontSize:13,fontWeight:600,margin:0}}>{it.userName}</p></div>
+                <div><p style={{fontSize:10,color:"#444",margin:"0 0 2px"}}>Phone</p><p style={{fontSize:13,fontWeight:600,margin:0,display:"flex",alignItems:"center",gap:4}}>{IC.phone} {it.userPhone}</p></div>
+                <div><p style={{fontSize:10,color:"#444",margin:"0 0 2px"}}>Color</p><p style={{fontSize:13,margin:0}}>{it.color||"\u2014"}</p></div>
+                <div><p style={{fontSize:10,color:"#444",margin:"0 0 2px"}}>Submitted</p><p style={{fontSize:13,margin:0}}>{it.createdAt}</p></div>
+              </div>
+            </div>
+            {(it.pickupDate||it.pickupAddress)&&<div style={{background:C.card,borderRadius:14,padding:20,border:"1px solid "+C.bdr2,marginBottom:14}}>
+              <h3 style={{fontSize:14,fontWeight:700,margin:"0 0 12px"}}>Pickup</h3>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                {it.pickupDate&&<div><p style={{fontSize:10,color:"#444",margin:"0 0 2px"}}>{IC.clock} Date</p><p style={{fontSize:13,fontWeight:600,margin:0}}>{it.pickupDate} at {it.pickupTime}</p></div>}
+                {it.pickupAddress&&<div><p style={{fontSize:10,color:"#444",margin:"0 0 2px"}}>{IC.map} Address</p><p style={{fontSize:13,fontWeight:600,margin:0}}>{it.pickupAddress}</p></div>}
+                {it.driverPhone&&<div><p style={{fontSize:10,color:"#444",margin:"0 0 2px"}}>Driver</p><p style={{fontSize:13,fontWeight:600,margin:0,color:C.grn}}>{it.driverPhone}</p></div>}
+              </div>
+            </div>}
+          </div>
+          <div>
+            <div style={{background:C.card,borderRadius:14,padding:20,border:"1px solid "+C.bdr2,marginBottom:14}}>
+              <h3 style={{fontSize:14,fontWeight:700,margin:"0 0 14px"}}>Actions</h3>
+              {it.stage==="pending_review"&&<div>
+                <p style={{fontSize:12,color:"#888",margin:"0 0 12px"}}>Review photos. Accept with a price or reject.</p>
+                <Input label="SUGGESTED PRICE ($)" value={mData.price||""} onChange={v=>sMData({...mData,price:v})} type="number" placeholder="e.g. 5000"/>
+                <Input label="NOTES" value={mData.notes||""} onChange={v=>sMData({...mData,notes:v})} textarea placeholder="Optional notes..."/>
+                <div style={{display:"flex",gap:8}}><Btn primary sm disabled={!mData.price} onClick={()=>{updWf(it.id,{stage:"price_suggested",suggestedPrice:Number(mData.price),adminNotes:mData.notes||""},"Admin suggested price: "+fmt(Number(mData.price)));sMData({});notify("Price sent to user")}}>Accept & Price</Btn><Btn danger sm outline onClick={()=>{updWf(it.id,{stage:"rejected"},"Admin rejected item");notify("Rejected");sDetail(null)}} style={{background:"transparent",border:"1.5px solid "+C.red}}>Reject</Btn></div>
+              </div>}
+              {it.stage==="price_suggested"&&<div>
+                <p style={{fontSize:12,color:"#888",margin:"0 0 8px"}}>Waiting for user to respond to <b style={{color:C.wh}}>{fmt(it.suggestedPrice)}</b></p>
+                <div style={{padding:14,background:"#0F0F0F",borderRadius:10,border:"1px solid "+C.bdr2}}>
+                  <p style={{fontSize:11,color:"#555",margin:"0 0 10px"}}>Simulate user:</p>
+                  <div style={{display:"flex",gap:8}}><Btn sm onClick={()=>{updWf(it.id,{stage:"price_accepted"},"User accepted price");notify("Price accepted")}}>{"\u2713"} Accepts</Btn><Btn sm outline onClick={()=>{updWf(it.id,{stage:"price_rejected"},"User rejected price");notify("Price rejected");sDetail(null)}}>{"\u2717"} Rejects</Btn></div>
+                </div>
+              </div>}
+              {it.stage==="price_accepted"&&<div>
+                <p style={{fontSize:12,color:"#888",margin:"0 0 8px"}}>User accepted. Waiting for pickup schedule.</p>
+                <div style={{padding:14,background:"#0F0F0F",borderRadius:10,border:"1px solid "+C.bdr2}}>
+                  <p style={{fontSize:11,color:"#555",margin:"0 0 10px"}}>Simulate user scheduling:</p>
+                  <Input label="DATE" value={mData.pDate||""} onChange={v=>sMData({...mData,pDate:v})} placeholder="Feb 25, 2026"/>
+                  <Input label="TIME" value={mData.pTime||""} onChange={v=>sMData({...mData,pTime:v})} placeholder="3:00 PM"/>
+                  <Input label="ADDRESS" value={mData.pAddr||""} onChange={v=>sMData({...mData,pAddr:v})} placeholder="Full address"/>
+                  <Btn sm disabled={!mData.pDate||!mData.pAddr} onClick={()=>{updWf(it.id,{stage:"pickup_scheduled",pickupDate:mData.pDate,pickupTime:mData.pTime,pickupAddress:mData.pAddr},"Pickup scheduled: "+mData.pDate);sMData({});notify("Pickup scheduled")}}>Schedule</Btn>
+                </div>
+              </div>}
+              {it.stage==="pickup_scheduled"&&<div>
+                <p style={{fontSize:12,color:"#888",margin:"0 0 8px"}}>Send driver to pick up.</p>
+                <div style={{background:"#0F0F0F",borderRadius:10,padding:14,border:"1px solid "+C.bdr2,marginBottom:12}}>
+                  <p style={{fontSize:11,color:"#888",margin:0}}><b>{it.pickupDate}</b> at <b>{it.pickupTime}</b> — {it.pickupAddress}</p>
+                </div>
+                <Input label="DRIVER PHONE" value={mData.driverPhone||""} onChange={v=>sMData({...mData,driverPhone:v})} placeholder="+20 100 999 0000"/>
+                <Btn primary sm disabled={!mData.driverPhone} onClick={()=>{updWf(it.id,{stage:"driver_dispatched",driverPhone:mData.driverPhone},"Driver dispatched: "+mData.driverPhone);sMData({});notify("Driver sent!")}}>Send Driver</Btn>
+              </div>}
+              {it.stage==="driver_dispatched"&&<div>
+                <p style={{fontSize:12,color:"#888",margin:"0 0 12px"}}>Driver en route. Driver: <b style={{color:C.grn}}>{it.driverPhone}</b></p>
+                <Btn primary sm onClick={()=>{updWf(it.id,{stage:"arrived_at_office"},"Item arrived at office");notify("Arrived at office")}}>Mark Arrived at Office</Btn>
+              </div>}
+              {it.stage==="arrived_at_office"&&<div>
+                <p style={{fontSize:12,color:"#888",margin:"0 0 8px"}}>Authenticate the physical item.</p>
+                <Input label="AUTH NOTES" value={mData.authNotes||""} onChange={v=>sMData({...mData,authNotes:v})} textarea placeholder="Details..."/>
+                <div style={{display:"flex",gap:8}}>
+                  <Btn sm onClick={()=>{updWf(it.id,{stage:"auth_passed",adminNotes:(it.adminNotes||"")+"\n\u2713 "+(mData.authNotes||"Authentic")},"Authentication PASSED \u2713");sMData({});notify("Auth passed!")}} style={{background:C.grn,color:"#000"}}>{IC.check} Pass</Btn>
+                  <Btn danger sm onClick={()=>{const notif={id:"n"+Date.now(),type:"auth_failed",sellerId:it.sellerId,msg:it.brand+" "+it.name+" failed authentication. Item will be returned.",t:"Just now",read:false};sv({...d,workflow:wf.map(w=>w.id===it.id?{...w,stage:"auth_failed",adminNotes:(w.adminNotes||"")+"\n\u2717 "+(mData.authNotes||""),history:[{t:"Just now",msg:"Authentication FAILED \u2717 \u2014 User notified"},...(w.history||[])]}:w),notifications:[...(d.notifications||[]),notif]});sDetail({...it,stage:"auth_failed"});sMData({});notify("Auth failed \u2014 user notified")}}>{"\u2717"} Fail</Btn>
+                </div>
+              </div>}
+              {it.stage==="auth_passed"&&<div>
+                <p style={{fontSize:12,color:"#888",margin:"0 0 12px"}}>Upload pro photos and list.</p>
+                <div style={{marginBottom:14}}>
+                  <label style={{display:"block",fontSize:10,fontWeight:600,marginBottom:6,color:"#666",letterSpacing:1}}>PRO PHOTOS</label>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
+                    {(mData.proPhotos||[]).map((ph,i)=><div key={i} style={{aspectRatio:"3/4",borderRadius:8,overflow:"hidden",position:"relative",border:"1px solid "+C.bdr2}}><img src={ph} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/><button onClick={()=>{const np=[...(mData.proPhotos||[])];np.splice(i,1);sMData({...mData,proPhotos:np})}} style={{position:"absolute",top:3,right:3,width:18,height:18,borderRadius:"50%",background:"rgba(0,0,0,.8)",border:"none",color:"#fff",fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>&times;</button></div>)}
+                    <label style={{aspectRatio:"3/4",borderRadius:8,border:"2px dashed "+C.bdr2,background:C.card2,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><span style={{fontSize:18,color:"#444"}}>+</span><span style={{fontSize:8,color:"#444"}}>Upload</span>
+                      <input type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>{const files=Array.from(e.target.files||[]);files.forEach(f=>{const r=new FileReader();r.onload=ev=>{sMData(prev=>({...prev,proPhotos:[...(prev.proPhotos||[]),ev.target.result]}))};r.readAsDataURL(f)});e.target.value=""}}/>
+                    </label>
+                  </div>
+                </div>
+                <Input label="LISTING DESCRIPTION" value={mData.proDesc||""} onChange={v=>sMData({...mData,proDesc:v})} textarea placeholder="Professional listing description..."/>
+                <Input label="FINAL PRICE ($)" value={mData.finalPrice||String(it.suggestedPrice||"")} onChange={v=>sMData({...mData,finalPrice:v})} type="number"/>
+                <Btn primary sm disabled={!(mData.proDesc||(mData.proPhotos||[]).length)} onClick={()=>{updWf(it.id,{stage:"photoshoot_done",proPhotos:mData.proPhotos||[],proDesc:mData.proDesc||"",suggestedPrice:Number(mData.finalPrice||it.suggestedPrice)},"Photoshoot complete");sMData({});notify("Photoshoot done!")}}>Complete Photoshoot</Btn>
+              </div>}
+              {it.stage==="photoshoot_done"&&<div>
+                <p style={{fontSize:12,color:"#888",margin:"0 0 12px"}}>Publish to {it.userName}'s closet.</p>
+                <Btn primary sm onClick={()=>listItem(it,it.proPhotos,it.proDesc,it.suggestedPrice)} style={{background:C.grn,color:"#000"}}>{IC.upload} Publish to Marketplace</Btn>
+              </div>}
+              {it.stage==="listed"&&<div style={{padding:16,background:C.grn+"12",borderRadius:10,border:"1px solid "+C.grn+"30"}}><p style={{fontSize:13,fontWeight:700,color:C.grn,margin:"0 0 4px"}}>{"\u2713"} Listed on Marketplace</p><p style={{fontSize:12,color:"#888",margin:0}}>Live in {it.userName}'s closet at <b style={{color:C.wh}}>{fmt(it.suggestedPrice)}</b></p></div>}
+              {it.stage==="auth_failed"&&<div style={{padding:16,background:C.red+"12",borderRadius:10,border:"1px solid "+C.red+"30"}}><p style={{fontSize:13,fontWeight:700,color:C.red,margin:0}}>Authentication Failed — User Notified</p></div>}
+              {it.stage==="rejected"&&<div style={{padding:16,background:C.red+"12",borderRadius:10,border:"1px solid "+C.red+"30"}}><p style={{fontSize:13,fontWeight:700,color:C.red,margin:0}}>Item Rejected</p></div>}
+              {it.stage==="price_rejected"&&<div style={{padding:16,background:C.red+"12",borderRadius:10,border:"1px solid "+C.red+"30"}}><p style={{fontSize:13,fontWeight:700,color:C.red,margin:0}}>User Rejected Price</p></div>}
+            </div>
+            {it.adminNotes&&<div style={{background:C.card,borderRadius:14,padding:20,border:"1px solid "+C.bdr2,marginBottom:14}}><h3 style={{fontSize:14,fontWeight:700,margin:"0 0 8px"}}>Notes</h3><p style={{fontSize:12,color:"#888",margin:0,whiteSpace:"pre-line"}}>{it.adminNotes}</p></div>}
+            <div style={{background:C.card,borderRadius:14,padding:20,border:"1px solid "+C.bdr2}}><h3 style={{fontSize:14,fontWeight:700,margin:"0 0 14px"}}>Timeline</h3><Timeline history={[...(it.history||[])].reverse()}/></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </div>);}
+
+  // PAGES
+  const Content=()=>{
+    if(page==="dashboard") return(<div style={{animation:"fadeIn .3s"}}>
+      <h1 style={{fontFamily:FH,fontSize:26,fontWeight:700,margin:"0 0 4px"}}>Dashboard</h1>
+      <p style={{fontSize:13,color:"#555",margin:"0 0 28px"}}>Workflow overview — synced with marketplace</p>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:28}} className="ds"><style>{`@media(min-width:900px){.ds{grid-template-columns:repeat(3,1fr) !important}}`}</style>
+        <StatCard label="PENDING REVIEW" value={counts.pending} c={counts.pending?C.ylw:C.wh} ic={IC.eye}/>
+        <StatCard label="PICKUPS" value={counts.pickup} c={C.org} ic={IC.truck}/>
+        <StatCard label="AT OFFICE" value={counts.atOffice} c={C.bl} ic={IC.shield}/>
+        <StatCard label="PHOTOSHOOT" value={counts.authPassed} c={C.pur} ic={IC.cam}/>
+        <StatCard label="LISTED" value={counts.listed} c={C.grn} ic={IC.items}/>
+        <StatCard label="LIVE PRODUCTS" value={prods.filter(p=>p.status==="live").length} ic={IC.list}/>
+      </div>
+      <h2 style={{fontSize:16,fontWeight:700,margin:"0 0 12px"}}>Needs Attention</h2>
+      {wf.filter(i=>["pending_review","pickup_scheduled","arrived_at_office","auth_passed","photoshoot_done"].includes(i.stage)).length===0&&<p style={{color:"#444"}}>All clear!</p>}
+      {wf.filter(i=>["pending_review","pickup_scheduled","arrived_at_office","auth_passed","photoshoot_done"].includes(i.stage)).map(it=><ItemRow key={it.id} it={it} showStage/>)}
+    </div>);
+
+    if(page==="review"){const its=wf.filter(i=>i.stage==="pending_review");return(<div style={{animation:"fadeIn .3s"}}><h1 style={{fontFamily:FH,fontSize:26,fontWeight:700,margin:"0 0 4px"}}>Photo Review</h1><p style={{fontSize:13,color:"#555",margin:"0 0 20px"}}>{its.length} pending</p>{its.length===0?<div style={{textAlign:"center",padding:48,background:C.card,borderRadius:14,border:"1px solid "+C.bdr2}}><p style={{color:"#666"}}>No items to review</p></div>:its.map(it=><ItemRow key={it.id} it={it}/>)}</div>);}
+
+    if(page==="pickup"){const its=wf.filter(i=>["pickup_scheduled","driver_dispatched","price_accepted"].includes(i.stage));return(<div style={{animation:"fadeIn .3s"}}><h1 style={{fontFamily:FH,fontSize:26,fontWeight:700,margin:"0 0 4px"}}>Pickups & Drivers</h1><p style={{fontSize:13,color:"#555",margin:"0 0 20px"}}>{its.length} items</p>{its.length===0?<div style={{textAlign:"center",padding:48,background:C.card,borderRadius:14,border:"1px solid "+C.bdr2}}><p style={{color:"#666"}}>No pickups</p></div>:its.map(it=><ItemRow key={it.id} it={it} showStage/>)}</div>);}
+
+    if(page==="auth"){const its=wf.filter(i=>i.stage==="arrived_at_office");return(<div style={{animation:"fadeIn .3s"}}><h1 style={{fontFamily:FH,fontSize:26,fontWeight:700,margin:"0 0 4px"}}>Authentication</h1><p style={{fontSize:13,color:"#555",margin:"0 0 20px"}}>{its.length} items at office</p>{its.length===0?<div style={{textAlign:"center",padding:48,background:C.card,borderRadius:14,border:"1px solid "+C.bdr2}}><p style={{color:"#666"}}>No items</p></div>:its.map(it=><ItemRow key={it.id} it={it}/>)}</div>);}
+
+    if(page==="photoshoot"){const its=wf.filter(i=>["auth_passed","photoshoot_done"].includes(i.stage));return(<div style={{animation:"fadeIn .3s"}}><h1 style={{fontFamily:FH,fontSize:26,fontWeight:700,margin:"0 0 4px"}}>Photoshoot & List</h1><p style={{fontSize:13,color:"#555",margin:"0 0 20px"}}>{its.length} items</p>{its.length===0?<div style={{textAlign:"center",padding:48,background:C.card,borderRadius:14,border:"1px solid "+C.bdr2}}><p style={{color:"#666"}}>No items</p></div>:its.map(it=><ItemRow key={it.id} it={it} showStage/>)}</div>);}
+
+    if(page==="products") return(<div style={{animation:"fadeIn .3s"}}><h1 style={{fontFamily:FH,fontSize:26,fontWeight:700,margin:"0 0 4px"}}>Live Products</h1><p style={{fontSize:13,color:"#555",margin:"0 0 20px"}}>{prods.filter(p=>p.status==="live").length} live on marketplace</p>
+      {prods.filter(p=>p.status==="live").map(p=><div key={p.id} style={{display:"flex",gap:14,padding:"14px 16px",background:C.card,borderRadius:12,border:"1px solid "+C.bdr2,marginBottom:8,alignItems:"center"}}>
+        <div style={{width:52,height:62,borderRadius:8,background:C.card2,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>{(p.proPhotos||[])[0]?<img src={p.proPhotos[0]} alt="" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:8}}/>:<span style={{fontSize:9,color:"#333"}}>WIMC</span>}</div>
+        <div style={{flex:1}}><p style={{fontSize:10,fontWeight:700,letterSpacing:1.5,color:"#555",margin:"0 0 2px"}}>{p.brand}</p><p style={{fontSize:13,margin:"0 0 3px"}}>{p.name}</p><div style={{display:"flex",gap:6}}><span style={{fontSize:14,fontWeight:700}}>{fmt(p.price)}</span>{p.celeb&&<Badge t="CELEB" c={C.pur}/>}{p.bidding&&<Badge t="AUCTION" c={C.ylw}/>}</div></div>
+        <Badge t="LIVE" c={C.grn}/>
+      </div>)}
+    </div>);
+
+    if(page==="all") return(<div style={{animation:"fadeIn .3s"}}><h1 style={{fontFamily:FH,fontSize:26,fontWeight:700,margin:"0 0 4px"}}>All Workflow Items</h1><p style={{fontSize:13,color:"#555",margin:"0 0 20px"}}>{wf.length} total</p>
+      {wf.map(it=><ItemRow key={it.id} it={it} showStage/>)}
+      <Btn outline sm onClick={async()=>{await ST.set(KEY,null);sD(INIT);notify("Reset to demo");sDetail(null)}} style={{marginTop:16}}>Reset Demo Data</Btn>
+    </div>);
+
+    return null;
+  };
+
+  return(
+    <div style={{display:"flex",minHeight:"100vh",background:C.bg}}><style>{CSS}</style><Toast msg={toast}/>
+      <div className="dk-s" style={{display:"block"}}><style>{`@media(max-width:860px){.dk-s{display:none !important}}`}</style><Sidebar/></div>
+      <div className="mb-t" style={{display:"none",position:"fixed",top:0,left:0,right:0,zIndex:300,background:"rgba(10,10,10,.95)",backdropFilter:"blur(16px)",borderBottom:"1px solid "+C.bdr,padding:"12px 16px",alignItems:"center",justifyContent:"space-between"}}><style>{`@media(max-width:860px){.mb-t{display:flex !important}}`}</style>
+        <div><span style={{fontFamily:FH,fontSize:16,fontWeight:700}}>WIMC</span><span style={{fontFamily:FW,fontSize:10,color:"#555",marginLeft:6}}>Admin</span></div>
+        <button onClick={()=>sSide(!sideOpen)} style={{background:"none",border:"none",cursor:"pointer"}}>{sideOpen?IC.close:IC.menu}</button>
+      </div>
+      {sideOpen&&<><div style={{position:"fixed",inset:0,zIndex:250,background:"rgba(0,0,0,.7)"}} className="mo" onClick={()=>sSide(false)}><style>{`@media(min-width:861px){.mo{display:none !important}}`}</style></div><div style={{position:"fixed",top:52,left:0,right:0,zIndex:260,background:C.side,borderBottom:"1px solid "+C.bdr,maxHeight:"70vh",overflowY:"auto"}} className="ms"><style>{`@media(min-width:861px){.ms{display:none !important}}`}</style><Sidebar mobile/></div></>}
+      <div style={{flex:1,overflow:"auto"}}><div style={{padding:"28px 28px 48px",maxWidth:960}} className="mp"><style>{`@media(max-width:860px){.mp{padding:68px 16px 48px !important}}`}</style><Content/></div></div>
+    </div>
+  );
+}

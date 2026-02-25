@@ -1,0 +1,9 @@
+node_modules/
+.next/
+out/
+.env.local
+.env*.local
+*.tsbuildinfo
+
+# Windows reserved device name (created by build tooling error)
+nul
