@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(npx vite build)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__list_migrations",
+      "mcp__supabase__list_extensions",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__get_project_url",
+      "mcp__supabase__get_publishable_keys",
+      "mcp__supabase__search_docs",
+      "Bash(test:*)",
+      "Bash(tail:*)",
+      "Bash(cd:*)",
+      "Bash(grep:*)",
+      "Bash(head:*)",
+      "Bash(cd \"/c/Users/Administrator/Documents/Projects/tests/Website of WIMC - Copy \\(2\\)/frontend\" && npx tsc --noEmit 2>&1)",
+      "mcp__supabase__apply_migration",
+      "Bash(node:*)",
+      "Bash(which supabase:*)",
+      "Bash(cd \"/c/Users/Administrator/Documents/Projects/tests/Website of WIMC - Copy \\(2\\)/backend\" && npx tsc --noEmit 2>&1)",
+      "Bash(cat:*)",
+      "Bash(cd C:\\\\Users\\\\Administrator\\\\Documents\\\\Projects\\\\tests\\\\Website of WIMC - Copy \\(2\\):*)",
+      "Bash(dir:*)",
+      "Bash(cd \"C:\\\\Users\\\\Administrator\\\\Documents\\\\Projects\\\\tests\\\\Website of WIMC - Copy \\(2\\)\" && git add .gitignore render.yaml admin.txt website.txt logo/ shared/ backend/ frontend/ wimc/ 2>&1)"
+    ]
+  }
+}
