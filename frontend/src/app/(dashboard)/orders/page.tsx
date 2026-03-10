@@ -7,6 +7,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { EmptyState } from '@/components/ui/empty-state';
+import { formatPrice } from '@/lib/currency';
+import Image from 'next/image';
 
 const statusColors: Record<string, string> = {
   pending_payment: '#FFBB44',
@@ -41,14 +43,14 @@ export default function OrdersPage() {
             <Link key={order.id} href={`/orders/${order.id}`}>
               <Card hover className="p-5 flex items-center gap-4">
                 {order.wimc_listings?.photos?.[0] && (
-                  <img src={order.wimc_listings.photos[0]} alt="" className="w-16 h-16 rounded-lg object-cover" />
+                  <Image src={order.wimc_listings.photos[0]} alt="" width={64} height={64} className="w-16 h-16 rounded-lg object-cover" unoptimized />
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{order.wimc_listings?.name || 'Item'}</p>
                   <p className="text-xs text-wimc-subtle">{order.wimc_listings?.brand} &middot; {new Date(order.created_at).toLocaleDateString()}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="font-heading font-bold">${order.total?.toLocaleString()}</p>
+                  <p className="font-heading font-bold">{formatPrice(order.total)}</p>
                   <Badge color={statusColors[order.status]}>{order.status.replace(/_/g, ' ')}</Badge>
                 </div>
               </Card>

@@ -1,4 +1,4 @@
-'use client';
+import { formatPriceExact } from '@/lib/currency';
 
 interface CheckoutBreakdownProps {
   itemPrice: number;
@@ -8,7 +8,7 @@ interface CheckoutBreakdownProps {
 }
 
 export function CheckoutBreakdown({ itemPrice, serviceFee, shippingFee, total }: CheckoutBreakdownProps) {
-  const fmt = (n: number) => '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt = formatPriceExact;
 
   return (
     <div className="bg-wimc-surface border border-wimc-border rounded-xl p-6 space-y-3">

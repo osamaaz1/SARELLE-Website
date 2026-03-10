@@ -25,7 +25,7 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
             <button
               key={cat}
               onClick={() => onChange('category', cat)}
-              className={`rounded-full px-4 py-[7px] text-[11px] font-semibold transition-all duration-150 ${
+              className={`rounded-full px-5 py-2.5 text-[13px] font-semibold transition-all duration-150 min-h-[44px] ${
                 active
                   ? 'bg-white border-2 border-white text-black'
                   : 'bg-wimc-surface border border-wimc-border text-wimc-muted hover:border-[#444]'
@@ -41,7 +41,7 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
         <select
           value={filters.sort}
           onChange={(e) => onChange('sort', e.target.value)}
-          className="bg-wimc-surface border border-wimc-border rounded-[10px] px-3 py-[7px] text-[11px] font-semibold text-wimc-muted outline-none"
+          className="bg-wimc-surface border border-wimc-border rounded-[10px] px-4 py-2.5 text-[13px] font-semibold text-wimc-muted outline-none min-h-[44px]"
         >
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>

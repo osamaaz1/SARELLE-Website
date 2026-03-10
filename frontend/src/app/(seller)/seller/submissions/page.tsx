@@ -7,6 +7,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { EmptyState } from '@/components/ui/empty-state';
+import { formatPrice } from '@/lib/currency';
+import Image from 'next/image';
 
 const STAGES: Record<string, { label: string; color: string }> = {
   pending_review: { label: 'Pending Review', color: '#FFBB44' },
@@ -45,13 +47,13 @@ export default function SellerSubmissionsPage() {
             return (
               <Link key={sub.id} href={`/seller/submissions/${sub.id}`}>
                 <Card hover className="p-5 flex items-center gap-4">
-                  {sub.user_photos?.[0] && <img src={sub.user_photos[0]} alt="" className="w-14 h-14 rounded-lg object-cover" />}
+                  {sub.user_photos?.[0] && <Image src={sub.user_photos[0]} alt="" width={56} height={56} className="w-14 h-14 rounded-lg object-cover" unoptimized />}
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{sub.name}</p>
                     <p className="text-xs text-wimc-subtle">{sub.brand} &middot; {sub.category}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    {sub.proposed_price && <p className="text-sm font-medium">${sub.proposed_price.toLocaleString()}</p>}
+                    {sub.proposed_price && <p className="text-sm font-medium">{formatPrice(sub.proposed_price)}</p>}
                     <Badge color={stage.color}>{stage.label}</Badge>
                   </div>
                 </Card>

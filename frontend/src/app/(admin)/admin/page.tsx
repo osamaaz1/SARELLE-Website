@@ -6,6 +6,7 @@ import { StatCard } from '@/components/ui/stat-card';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { formatPrice } from '@/lib/currency';
 
 const stageColors: Record<string, string> = {
   pending_review: '#FFBB44', price_suggested: '#88BBFF', price_accepted: '#44DD66',
@@ -32,7 +33,7 @@ export default function AdminDashboardPage() {
         <StatCard label="Active Listings" value={data?.stats?.totalListings || 0} color="#44DD66" />
         <StatCard label="Orders" value={data?.stats?.totalOrders || 0} color="#88BBFF" />
         <StatCard label="Payouts" value={data?.stats?.totalPayouts || 0} color="#AA88FF" />
-        <StatCard label="Revenue" value={`$${(data?.stats?.revenue || 0).toLocaleString()}`} color="#FF4444" />
+        <StatCard label="Revenue" value={formatPrice(data?.stats?.revenue || 0)} color="#FF4444" />
       </div>
 
       <Card className="p-6">

@@ -1,9 +1,7 @@
 // Mock data for development preview — shown when backend is unreachable
 // Replace with real data by running backend/migrations/002_seed_test_data.sql
 
-// picsum.photos — always loads, consistent per seed
-const p = (seed: string) => `https://picsum.photos/seed/${seed}/600/800`;
-
+// Real Unsplash photos of luxury items (matching each product type)
 export const MOCK_LISTINGS = [
   {
     id: 'mock-1',
@@ -14,13 +12,16 @@ export const MOCK_LISTINGS = [
     price: 45000,
     original_price: 52000,
     description: 'Iconic Birkin 30 in Toffee Togo leather with Palladium hardware. Stamp T (2015). Authenticated by WIMC.',
-    photos: [p('hermes-birkin'), p('hermes-bag')],
+    photos: [
+      'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600&h=800&fit=crop',
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&h=800&fit=crop',
+    ],
     status: 'published',
     featured: true,
     bidding: true,
     bids: [{ u: 'User1', amt: 46000 }, { u: 'User2', amt: 47500 }],
     celebrity_id: 'celeb-1',
-    wimc_profiles: { display_name: 'Sarelle Closet', avatar_url: null },
+    wimc_profiles: { display_name: 'WIMC Closet', avatar_url: null },
   },
   {
     id: 'mock-2',
@@ -31,13 +32,16 @@ export const MOCK_LISTINGS = [
     price: 22500,
     original_price: null,
     description: 'Medium Classic Flap in black caviar leather with gold hardware. Series 28. Comes with full set.',
-    photos: [p('chanel-flap'), p('chanel-bag')],
+    photos: [
+      'https://images.unsplash.com/photo-1594223274512-ad4803739b7c?w=600&h=800&fit=crop',
+      'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600&h=800&fit=crop',
+    ],
     status: 'published',
     featured: true,
     bidding: true,
     bids: [{ u: 'User3', amt: 23000 }],
     celebrity_id: 'celeb-1',
-    wimc_profiles: { display_name: 'Sarelle Closet', avatar_url: null },
+    wimc_profiles: { display_name: 'WIMC Closet', avatar_url: null },
   },
   {
     id: 'mock-3',
@@ -48,13 +52,16 @@ export const MOCK_LISTINGS = [
     price: 3800,
     original_price: 4800,
     description: 'Classic Speedy 25 in LV Monogram canvas. Light honey patina. Date code CA3161.',
-    photos: [p('lv-speedy'), p('lv-bag')],
+    photos: [
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&h=800&fit=crop',
+      'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=600&h=800&fit=crop',
+    ],
     status: 'published',
     featured: true,
     bidding: true,
     bids: [],
     celebrity_id: 'celeb-1',
-    wimc_profiles: { display_name: 'Sarelle Closet', avatar_url: null },
+    wimc_profiles: { display_name: 'WIMC Closet', avatar_url: null },
   },
   {
     id: 'mock-4',
@@ -65,13 +72,16 @@ export const MOCK_LISTINGS = [
     price: 18500,
     original_price: 21000,
     description: 'Rolex Datejust 36mm Oystersteel with silver Roman numeral dial. Reference 126234. 2021 with box and papers.',
-    photos: [p('rolex-watch'), p('rolex-datejust')],
+    photos: [
+      'https://images.unsplash.com/photo-1587836374828-4dbafa94cf0e?w=600&h=800&fit=crop',
+      'https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=600&h=800&fit=crop',
+    ],
     status: 'published',
     featured: true,
     bidding: true,
     bids: [{ u: 'User4', amt: 19000 }, { u: 'User5', amt: 19800 }],
     celebrity_id: 'celeb-2',
-    wimc_profiles: { display_name: 'Sarelle Closet', avatar_url: null },
+    wimc_profiles: { display_name: 'WIMC Closet', avatar_url: null },
   },
   {
     id: 'mock-5',
@@ -82,11 +92,14 @@ export const MOCK_LISTINGS = [
     price: 750,
     original_price: 1050,
     description: 'Iconic So Kate pump in black patent leather. 120mm heel. Size EU 38. Worn twice.',
-    photos: [p('louboutin-heels'), p('louboutin-shoe')],
+    photos: [
+      'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=600&h=800&fit=crop',
+      'https://images.unsplash.com/photo-1515347619252-60a4bf4fff4f?w=600&h=800&fit=crop',
+    ],
     status: 'published',
     featured: false,
     bidding: false,
-    wimc_profiles: { display_name: 'Sarelle Closet', avatar_url: null },
+    wimc_profiles: { display_name: 'WIMC Closet', avatar_url: null },
   },
   {
     id: 'mock-6',
@@ -97,11 +110,14 @@ export const MOCK_LISTINGS = [
     price: 2200,
     original_price: null,
     description: 'Small GG Marmont in black matelassé chevron leather. Gold-tone Double G hardware.',
-    photos: [p('gucci-marmont'), p('gucci-bag')],
+    photos: [
+      'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=600&h=800&fit=crop',
+      'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600&h=800&fit=crop',
+    ],
     status: 'published',
     featured: false,
     bidding: false,
-    wimc_profiles: { display_name: 'Sarelle Closet', avatar_url: null },
+    wimc_profiles: { display_name: 'WIMC Closet', avatar_url: null },
   },
   {
     id: 'mock-7',
@@ -112,13 +128,16 @@ export const MOCK_LISTINGS = [
     price: 8500,
     original_price: 9800,
     description: '18K yellow gold Love bracelet with 4 diamonds. Size 17. Original box and receipt.',
-    photos: [p('cartier-bracelet'), p('cartier-gold')],
+    photos: [
+      'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=600&h=800&fit=crop',
+      'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=600&h=800&fit=crop',
+    ],
     status: 'published',
     featured: true,
     bidding: true,
     bids: [{ u: 'User6', amt: 8800 }],
     celebrity_id: 'celeb-2',
-    wimc_profiles: { display_name: 'Sarelle Closet', avatar_url: null },
+    wimc_profiles: { display_name: 'WIMC Closet', avatar_url: null },
   },
   {
     id: 'mock-8',
@@ -129,11 +148,14 @@ export const MOCK_LISTINGS = [
     price: 5800,
     original_price: 7200,
     description: 'Lady Dior medium in blush pink lambskin with light gold hardware. Full set with charms.',
-    photos: [p('dior-lady'), p('dior-bag')],
+    photos: [
+      'https://images.unsplash.com/photo-1594223274512-ad4803739b7c?w=600&h=800&fit=crop',
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&h=800&fit=crop',
+    ],
     status: 'published',
     featured: false,
     bidding: false,
-    wimc_profiles: { display_name: 'Sarelle Closet', avatar_url: null },
+    wimc_profiles: { display_name: 'WIMC Closet', avatar_url: null },
   },
   {
     id: 'mock-9',
@@ -144,11 +166,14 @@ export const MOCK_LISTINGS = [
     price: 620,
     original_price: 1100,
     description: 'Iconic Rockstud pump in nude leather with pyramid studs. 100mm heel. Size EU 37.5.',
-    photos: [p('valentino-rockstud'), p('valentino-pump')],
+    photos: [
+      'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=600&h=800&fit=crop',
+      'https://images.unsplash.com/photo-1515347619252-60a4bf4fff4f?w=600&h=800&fit=crop',
+    ],
     status: 'published',
     featured: false,
     bidding: false,
-    wimc_profiles: { display_name: 'Sarelle Closet', avatar_url: null },
+    wimc_profiles: { display_name: 'WIMC Closet', avatar_url: null },
   },
   {
     id: 'mock-10',
@@ -159,11 +184,96 @@ export const MOCK_LISTINGS = [
     price: 1450,
     original_price: null,
     description: 'Iconic Re-Edition 2005 in black Re-Nylon. Triangular logo plaque. Worn once — pristine.',
-    photos: [p('prada-nylon'), p('prada-bag')],
+    photos: [
+      'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=600&h=800&fit=crop',
+      'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&h=800&fit=crop',
+    ],
     status: 'published',
     featured: false,
     bidding: false,
-    wimc_profiles: { display_name: 'Sarelle Closet', avatar_url: null },
+    wimc_profiles: { display_name: 'WIMC Closet', avatar_url: null },
+  },
+];
+
+// Mock auction data for listings with bidding=true
+export const MOCK_AUCTIONS = [
+  {
+    id: 'mock-auction-1',
+    listing_id: 'mock-1',
+    starting_price: 45000,
+    current_price: 47500,
+    current_winner_id: 'mock-user-buyer',
+    reserve_met: false,
+    status: 'active',
+    starts_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    ends_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+    bid_count: 4,
+    mock_history: [
+      { id: 'bid-1', bidder_name: 'U***1', amount: 45000, status: 'outbid', created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'bid-2', bidder_name: 'U***2', amount: 45050, status: 'outbid', created_at: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'bid-3', bidder_name: 'U***1', amount: 46000, status: 'outbid', created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'bid-4', bidder_name: 'B***r', amount: 47500, status: 'winning', created_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString() },
+    ],
+  },
+  {
+    id: 'mock-auction-2',
+    listing_id: 'mock-2',
+    starting_price: 22500,
+    current_price: 23000,
+    current_winner_id: null,
+    reserve_met: true,
+    status: 'active',
+    starts_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    ends_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+    bid_count: 1,
+    mock_history: [
+      { id: 'bid-5', bidder_name: 'U***3', amount: 23000, status: 'winning', created_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString() },
+    ],
+  },
+  {
+    id: 'mock-auction-3',
+    listing_id: 'mock-3',
+    starting_price: 3800,
+    current_price: 3800,
+    current_winner_id: null,
+    reserve_met: false,
+    status: 'active',
+    starts_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+    ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    bid_count: 0,
+    mock_history: [],
+  },
+  {
+    id: 'mock-auction-4',
+    listing_id: 'mock-4',
+    starting_price: 18500,
+    current_price: 19800,
+    current_winner_id: null,
+    reserve_met: true,
+    status: 'active',
+    starts_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+    ends_at: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
+    bid_count: 3,
+    mock_history: [
+      { id: 'bid-6', bidder_name: 'U***4', amount: 18500, status: 'outbid', created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'bid-7', bidder_name: 'U***5', amount: 19000, status: 'outbid', created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'bid-8', bidder_name: 'U***4', amount: 19800, status: 'winning', created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+    ],
+  },
+  {
+    id: 'mock-auction-7',
+    listing_id: 'mock-7',
+    starting_price: 8500,
+    current_price: 8800,
+    current_winner_id: null,
+    reserve_met: false,
+    status: 'active',
+    starts_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    ends_at: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
+    bid_count: 1,
+    mock_history: [
+      { id: 'bid-9', bidder_name: 'U***6', amount: 8800, status: 'winning', created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+    ],
   },
 ];
 

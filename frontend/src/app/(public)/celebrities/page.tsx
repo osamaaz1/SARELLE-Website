@@ -29,7 +29,7 @@ export default function CelebritiesPage() {
         {/* Back */}
         <button
           onClick={() => setViewCeleb(null)}
-          className="flex items-center gap-1.5 text-[13px] text-[#888] hover:text-white transition-colors mb-5 bg-transparent border-none cursor-pointer"
+          className="flex items-center gap-2 text-[14px] text-[#888] hover:text-white transition-colors mb-5 bg-transparent border-none cursor-pointer py-2 -ml-1 pl-1 min-h-[44px]"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -64,7 +64,7 @@ export default function CelebritiesPage() {
         </div>
 
         {items.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3.5">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             {items.map((item: any) => (
               <ProductCard
                 key={item.id}
@@ -76,7 +76,9 @@ export default function CelebritiesPage() {
                 condition={item.condition}
                 category={item.category}
                 originalPrice={item.original_price ?? undefined}
-                bidding={item.bidding ?? true}
+                bidding={true}
+                celebrity_id={item.celebrity_id || viewCeleb.id}
+                listing_type="auction"
                 bids={item.bids ?? []}
               />
             ))}
@@ -103,30 +105,30 @@ export default function CelebritiesPage() {
           <p className="text-wimc-subtle">Celebrity closets coming soon!</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {celebrities.map((celeb: any) => (
             <div
               key={celeb.id}
               onClick={() => setViewCeleb(celeb)}
-              className="flex items-center gap-3.5 px-5 py-4 cursor-pointer bg-wimc-surface rounded-[14px] border border-wimc-border hover:border-[#444] transition-colors"
+              className="flex items-center gap-4 px-5 py-5 cursor-pointer bg-wimc-surface rounded-[14px] border border-wimc-border hover:border-[#444] transition-colors min-h-[72px]"
             >
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-white to-[#ccc] flex items-center justify-center flex-shrink-0">
-                <span className="text-[18px] font-extrabold text-black font-heading">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-white to-[#ccc] flex items-center justify-center flex-shrink-0">
+                <span className="text-[20px] font-extrabold text-black font-heading">
                   {celeb.name?.[0] ?? '?'}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[15px] font-bold mb-0.5">
+                <p className="text-[16px] font-bold mb-0.5">
                   {celeb.name}{' '}
                   <span className="text-[#44BB66]">&#10003;</span>
                 </p>
-                <p className="text-[12px] text-[#555] truncate">
+                <p className="text-[13px] text-[#555] truncate">
                   {celeb.bio}
                   {celeb.followers ? ` · ${celeb.followers}` : ''}
                   {celeb.totalItems ? ` · ${celeb.totalItems} items` : ''}
                 </p>
               </div>
-              <span className="text-[#444] text-[18px]">&rarr;</span>
+              <span className="text-[#444] text-[20px]">&rarr;</span>
             </div>
           ))}
         </div>

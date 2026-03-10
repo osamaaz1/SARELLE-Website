@@ -1,22 +1,17 @@
 ##########################################################
-# Render.com Blueprint
-# Docs: https://render.com/docs/blueprint-spec
+# Render.com Blueprint — Backend Only
+# Frontend is deployed on Vercel (auto-detects Next.js)
 #
-# Deploy both services from the Render dashboard:
+# Deploy from the Render dashboard:
 #   New > Blueprint > point to this repo
 #
 # After deploy, set these env vars in the Render dashboard
-# for each service (marked with sync: false below):
+# (marked with sync: false below):
 #
 # wimc-backend:
 #   SUPABASE_URL, SUPABASE_ANON_KEY,
 #   SUPABASE_SERVICE_ROLE_KEY, SUPABASE_JWT_SECRET,
-#   CORS_ORIGIN  (set to your frontend Render URL)
-#
-# wimc-frontend:
-#   NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
-#   NEXT_PUBLIC_API_URL  (set to your backend Render URL)
-#   NEXT_PUBLIC_WS_URL   (same as NEXT_PUBLIC_API_URL)
+#   CORS_ORIGIN  (set to your Vercel frontend URL)
 ##########################################################
 
 services:
@@ -28,6 +23,7 @@ services:
     rootDir: backend
     buildCommand: npm install && npm run build
     startCommand: node dist/main
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
@@ -53,25 +49,7 @@ services:
         value: "3"
       - key: MAX_UPLOAD_SIZE_MB
         value: "5"
-
-  # ── Frontend (Next.js) ────────────────────────────────
-  - type: web
-    name: wimc-frontend
-    runtime: node
-    plan: free
-    rootDir: frontend
-    buildCommand: npm install && npm run build
-    startCommand: npm run start
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: NEXT_PUBLIC_USE_MOCK
-        value: "false"
-      - key: NEXT_PUBLIC_SUPABASE_URL
+      - key: RESEND_API_KEY
         sync: false
-      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
-        sync: false
-      - key: NEXT_PUBLIC_API_URL
-        sync: false
-      - key: NEXT_PUBLIC_WS_URL
-        sync: false
+      - key: EMAIL_FROM
+        value: "WIMC <noreply@whatinmycloset.com>"

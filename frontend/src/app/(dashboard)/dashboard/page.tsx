@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { StatCard } from '@/components/ui/stat-card';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { formatPrice } from '@/lib/currency';
 
 export default function BuyerDashboardPage() {
   const { user } = useAuth();
@@ -53,7 +54,7 @@ export default function BuyerDashboardPage() {
                     <p className="text-xs text-wimc-subtle">{order.wimc_listings?.brand}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium">${order.total?.toLocaleString()}</p>
+                    <p className="text-sm font-medium">{formatPrice(order.total)}</p>
                     <p className="text-xs text-wimc-yellow capitalize">{order.status.replace(/_/g, ' ')}</p>
                   </div>
                 </Card>

@@ -1,5 +1,3 @@
-'use client';
-
 interface BadgeProps {
   children: React.ReactNode;
   color?: string;
@@ -13,7 +11,7 @@ export function Badge({ children, color, className = '' }: BadgeProps) {
 
   return (
     <span
-      className={`inline-flex items-center text-[10px] font-bold px-2.5 py-[3px] rounded tracking-[0.5px] whitespace-nowrap ${
+      className={`inline-flex items-center text-[12px] font-bold px-3 py-1.5 rounded tracking-[0.5px] whitespace-nowrap ${
         !color ? 'bg-wimc-surface-alt text-wimc-muted' : ''
       } ${className}`}
       style={style}

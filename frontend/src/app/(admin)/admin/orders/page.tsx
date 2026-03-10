@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { formatPrice } from '@/lib/currency';
 
 const statusColors: Record<string, string> = {
   pending_payment: '#FFBB44', paid: '#88BBFF', processing: '#AA88FF', shipped: '#FF8844',
@@ -45,7 +46,7 @@ export default function AdminOrdersPage() {
           <Card key={order.id} className="p-5 flex items-center gap-4">
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm truncate">{order.wimc_listings?.name || 'Order'}</p>
-              <p className="text-xs text-wimc-subtle">#{order.id.slice(0, 8)} &middot; ${order.total?.toLocaleString()}</p>
+              <p className="text-xs text-wimc-subtle">#{order.id.slice(0, 8)} &middot; {formatPrice(order.total)}</p>
             </div>
             <Badge color={statusColors[order.status]}>{order.status.replace(/_/g, ' ')}</Badge>
             <div className="flex gap-2">

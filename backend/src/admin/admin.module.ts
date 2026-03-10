@@ -7,9 +7,10 @@ import { ListingsModule } from '../listings/listings.module';
 import { OrdersModule } from '../orders/orders.module';
 import { PayoutsModule } from '../payouts/payouts.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { BidsModule } from '../bids/bids.module';
 
 @Module({
-  imports: [AuthModule, SubmissionsModule, ListingsModule, OrdersModule, PayoutsModule, NotificationsModule],
+  imports: [AuthModule, SubmissionsModule, ListingsModule, OrdersModule, PayoutsModule, NotificationsModule, BidsModule],
   controllers: [AdminController],
   providers: [AdminService],
 })

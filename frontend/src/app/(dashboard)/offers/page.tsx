@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useToast } from '@/providers/toast-provider';
+import { formatPrice } from '@/lib/currency';
+import Image from 'next/image';
 
 const statusColors: Record<string, string> = {
   pending: '#FFBB44', accepted: '#44DD66', rejected: '#FF4444', expired: '#666', withdrawn: '#666',
@@ -46,14 +48,14 @@ export default function SentOffersPage() {
           {offers.map((offer: any) => (
             <Card key={offer.id} className="p-5 flex items-center gap-4">
               {offer.wimc_listings?.photos?.[0] && (
-                <img src={offer.wimc_listings.photos[0]} alt="" className="w-14 h-14 rounded-lg object-cover" />
+                <Image src={offer.wimc_listings.photos[0]} alt="" width={56} height={56} className="w-14 h-14 rounded-lg object-cover" unoptimized />
               )}
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm truncate">{offer.wimc_listings?.name}</p>
-                <p className="text-xs text-wimc-subtle">Listed at ${offer.wimc_listings?.price?.toLocaleString()}</p>
+                <p className="text-xs text-wimc-subtle">Listed at {formatPrice(offer.wimc_listings?.price)}</p>
               </div>
               <div className="text-right flex-shrink-0">
-                <p className="font-heading font-bold">${offer.amount?.toLocaleString()}</p>
+                <p className="font-heading font-bold">{formatPrice(offer.amount)}</p>
                 <Badge color={statusColors[offer.status]}>{offer.status}</Badge>
               </div>
               {offer.status === 'pending' && (

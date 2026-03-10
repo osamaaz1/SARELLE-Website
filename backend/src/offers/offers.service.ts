@@ -1,9 +1,17 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { EmailService } from '../email/email.service';
+import { WimcGateway } from '../gateway/wimc.gateway';
 
 @Injectable()
 export class OffersService {
-  constructor(private readonly supabase: SupabaseService) {}
+  private readonly logger = new Logger(OffersService.name);
+
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly emailService: EmailService,
+    private readonly gateway: WimcGateway,
+  ) {}
 
   async create(buyerId: string, data: { listing_id: string; amount: number; idempotency_key: string }) {
     const client = this.supabase.getClient();
@@ -26,6 +34,15 @@ export class OffersService {
     if (!listing) throw new NotFoundException('Listing not found or not available');
     if (listing.seller_id === buyerId) throw new ForbiddenException('Cannot make offer on own listing');
 
+    // Store idempotency key FIRST with pending status to prevent duplicates on crash
+    await client.from('wimc_idempotency_keys').insert({
+      key: data.idempotency_key,
+      user_id: buyerId,
+      endpoint: 'POST /offers',
+      response_body: { status: 'pending' },
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    });
+
     const { data: offer, error } = await client
       .from('wimc_offers')
       .insert({
@@ -39,16 +56,32 @@ export class OffersService {
       .single();
     if (error) throw new BadRequestException(error.message);
 
-    // Store idempotency
-    await client.from('wimc_idempotency_keys').insert({
-      key: data.idempotency_key,
-      user_id: buyerId,
-      endpoint: 'POST /offers',
-      response_body: offer,
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    });
+    // Update idempotency key with actual response
+    await client.from('wimc_idempotency_keys')
+      .update({ response_body: offer })
+      .eq('key', data.idempotency_key);
+
+    // Notify seller via email
+    this.sendOfferEmail(listing.seller_id, buyerId, listing.name || listing.brand, data.amount)
+      .catch(e => this.logger.error('Email error', e));
+
+    // Real-time: notify seller of new offer
+    this.gateway.emitToUser(listing.seller_id, 'offer:new', offer);
 
     return offer;
+  }
+
+  private async sendOfferEmail(sellerId: string, buyerId: string, itemName: string, amount: number) {
+    const client = this.supabase.getClient();
+    const [sellerAuth, buyerProfile] = await Promise.all([
+      client.auth.admin.getUserById(sellerId),
+      client.from('wimc_profiles').select('display_name').eq('id', buyerId).single(),
+    ]);
+    const sellerEmail = sellerAuth.data?.user?.email;
+    const buyerName = buyerProfile.data?.display_name || 'A buyer';
+    if (sellerEmail) {
+      await this.emailService.sendNewOffer(sellerEmail, itemName, amount, buyerName);
+    }
   }
 
   async getSent(buyerId: string) {
@@ -76,8 +109,17 @@ export class OffersService {
     const client = this.supabase.getClient();
     const offer = await this.getOfferForSeller(offerId, sellerId);
 
-    // Accept this offer
-    await client.from('wimc_offers').update({ status: 'accepted', updated_at: new Date().toISOString() }).eq('id', offerId);
+    // Atomic: accept only if still pending (prevents double-accept race condition)
+    const { data: accepted, error: acceptError } = await client
+      .from('wimc_offers')
+      .update({ status: 'accepted', updated_at: new Date().toISOString() })
+      .eq('id', offerId)
+      .eq('status', 'pending')
+      .select()
+      .single();
+    if (acceptError || !accepted) {
+      throw new BadRequestException('Offer is no longer pending');
+    }
 
     // Reject all other pending offers on same listing
     await client
@@ -90,11 +132,18 @@ export class OffersService {
     // Reserve the listing
     await client.from('wimc_listings').update({ status: 'reserved', updated_at: new Date().toISOString() }).eq('id', offer.listing_id);
 
+    // Notify buyer of acceptance
+    this.sendOfferResponseEmail(offer.buyer_id, offer.listing_id, true, offer.amount)
+      .catch(e => this.logger.error('Email error', e));
+
+    // Real-time: notify buyer
+    this.gateway.emitToUser(offer.buyer_id, 'offer:updated', { id: offerId, status: 'accepted' });
+
     return { ...offer, status: 'accepted' };
   }
 
   async reject(offerId: string, sellerId: string) {
-    await this.getOfferForSeller(offerId, sellerId);
+    const offer = await this.getOfferForSeller(offerId, sellerId);
     const client = this.supabase.getClient();
     const { data } = await client
       .from('wimc_offers')
@@ -102,7 +151,28 @@ export class OffersService {
       .eq('id', offerId)
       .select()
       .single();
+
+    // Notify buyer of rejection
+    this.sendOfferResponseEmail(offer.buyer_id, offer.listing_id, false, offer.amount)
+      .catch(e => this.logger.error('Email error', e));
+
+    // Real-time: notify buyer
+    this.gateway.emitToUser(offer.buyer_id, 'offer:updated', { id: offerId, status: 'rejected' });
+
     return data;
+  }
+
+  private async sendOfferResponseEmail(buyerId: string, listingId: string, accepted: boolean, amount: number) {
+    const client = this.supabase.getClient();
+    const [buyerAuth, listing] = await Promise.all([
+      client.auth.admin.getUserById(buyerId),
+      client.from('wimc_listings').select('name, brand').eq('id', listingId).single(),
+    ]);
+    const buyerEmail = buyerAuth.data?.user?.email;
+    const itemName = listing.data ? `${listing.data.brand} ${listing.data.name}` : 'your item';
+    if (buyerEmail) {
+      await this.emailService.sendOfferResponse(buyerEmail, itemName, accepted, amount);
+    }
   }
 
   async withdraw(offerId: string, buyerId: string) {

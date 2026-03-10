@@ -4,6 +4,7 @@ import { SubmissionsService } from '../submissions/submissions.service';
 import { ListingsService } from '../listings/listings.service';
 import { OrdersService } from '../orders/orders.service';
 import { PayoutsService } from '../payouts/payouts.service';
+import { BidsService } from '../bids/bids.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles, RolesGuard } from '../auth/guards/roles.guard';
 
@@ -17,6 +18,7 @@ export class AdminController {
     private readonly listingsService: ListingsService,
     private readonly ordersService: OrdersService,
     private readonly payoutsService: PayoutsService,
+    private readonly bidsService: BidsService,
   ) {}
 
   @Get('dashboard')
@@ -31,9 +33,7 @@ export class AdminController {
   // === Submissions ===
   @Get('submissions')
   async listSubmissions(@Query('stage') stage?: string) {
-    const client = require('../supabase/supabase.service');
-    // Use submissions service with admin access
-    return this.submissionsService.listBySeller('*', stage);
+    return this.submissionsService.listAll(stage);
   }
 
   @Get('submissions/:id')
@@ -137,5 +137,27 @@ export class AdminController {
   @Post('celebrities')
   async createCelebrity(@Body() body: { name: string; bio: string; followers: string; avatar_url?: string; user_id?: string }) {
     return this.adminService.createCelebrity(body);
+  }
+
+  // === Auctions ===
+  @Post('auctions')
+  async createAuction(@Body() body: {
+    listing_id: string;
+    starting_price: number;
+    starts_at: string;
+    ends_at: string;
+    reserve_price?: number;
+  }) {
+    return this.bidsService.createAuction(body);
+  }
+
+  @Get('auctions')
+  async listAuctions() {
+    return this.bidsService.adminListAuctions();
+  }
+
+  @Post('auctions/:id/end')
+  async endAuction(@Param('id') id: string) {
+    return this.bidsService.endAuction(id);
   }
 }

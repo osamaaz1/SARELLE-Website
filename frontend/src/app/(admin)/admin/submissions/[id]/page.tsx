@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import Image from 'next/image';
 
 export default function AdminSubmissionDetailPage() {
   const { id } = useParams();
@@ -61,7 +62,9 @@ export default function AdminSubmissionDetailPage() {
       {sub.user_photos?.length > 0 && (
         <div className="grid grid-cols-4 gap-2">
           {sub.user_photos.map((p: string, i: number) => (
-            <img key={i} src={p} alt="" className="w-full aspect-square rounded-lg object-cover" />
+            <div key={i} className="relative aspect-square rounded-lg overflow-hidden">
+              <Image src={p} alt="" fill className="object-cover" sizes="(max-width: 768px) 25vw, 160px" unoptimized />
+            </div>
           ))}
         </div>
       )}

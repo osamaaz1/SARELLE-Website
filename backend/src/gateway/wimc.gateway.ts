@@ -9,7 +9,12 @@ import { Server, Socket } from 'socket.io';
 import { AuthService } from '../auth/auth.service';
 
 @WebSocketGateway({
-  cors: { origin: process.env.CORS_ORIGIN || 'http://localhost:3000', credentials: true },
+  cors: {
+    origin: process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(',')
+      : true,
+    credentials: true,
+  },
 })
 export class WimcGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -35,8 +40,12 @@ export class WimcGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (profile.role === 'admin') client.join('admin');
       if (['seller', 'vip_seller'].includes(profile.role)) client.join('sellers');
 
-      // Track socket
+      // Track socket (limit to 5 connections per user to prevent resource exhaustion)
       const existing = this.userSockets.get(user.id) || [];
+      if (existing.length >= 5) {
+        client.disconnect();
+        return;
+      }
       this.userSockets.set(user.id, [...existing, client.id]);
     } catch {
       client.disconnect();
@@ -63,5 +72,19 @@ export class WimcGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   emitToSellers(event: string, data: any) {
     this.server.to('sellers').emit(event, data);
+  }
+
+  emitToAuction(auctionId: string, event: string, data: any) {
+    this.server.to(`auction:${auctionId}`).emit(event, data);
+  }
+
+  @SubscribeMessage('auction:join')
+  handleAuctionJoin(client: Socket, auctionId: string) {
+    client.join(`auction:${auctionId}`);
+  }
+
+  @SubscribeMessage('auction:leave')
+  handleAuctionLeave(client: Socket, auctionId: string) {
+    client.leave(`auction:${auctionId}`);
   }
 }

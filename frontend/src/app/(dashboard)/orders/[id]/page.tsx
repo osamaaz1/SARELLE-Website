@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckoutBreakdown } from '@/components/marketplace/checkout-breakdown';
 import { OrderStatusTimeline } from '@/components/marketplace/order-status-timeline';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import Image from 'next/image';
 
 export default function OrderDetailPage() {
   const { id } = useParams();
@@ -33,7 +34,7 @@ export default function OrderDetailPage() {
           <h3 className="font-heading font-semibold mb-4">Item</h3>
           <div className="flex items-center gap-3">
             {order.wimc_listings?.photos?.[0] && (
-              <img src={order.wimc_listings.photos[0]} alt="" className="w-20 h-20 rounded-lg object-cover" />
+              <Image src={order.wimc_listings.photos[0]} alt="" width={80} height={80} className="w-20 h-20 rounded-lg object-cover" unoptimized />
             )}
             <div>
               <p className="font-medium">{order.wimc_listings?.name}</p>

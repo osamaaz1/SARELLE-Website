@@ -10,9 +10,10 @@ export class OrdersController {
   @Post()
   async create(@Req() req: any, @Body() body: {
     listing_id: string;
-    shipping_address: Record<string, any>;
+    shipping_address: { street: string; city: string; zip: string; country: string; [key: string]: any };
     idempotency_key: string;
     offer_id?: string;
+    auction_id?: string;
   }) {
     return this.ordersService.create(req.user.id, body);
   }

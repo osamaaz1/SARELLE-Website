@@ -30,19 +30,25 @@ const CONDITIONS = [
 export default function SellerSubmitPage() {
   const router = useRouter();
   const { addToast } = useToast();
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [form, setForm] = useState({ brand: 'Hermès', name: '', category: 'Bags', condition: 'Like New', color: '', description: '' });
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (photos.length === 0) { addToast('error', 'Please add at least one photo'); return; }
+    if (photoFiles.length === 0) { addToast('error', 'Please add at least one photo'); return; }
     setLoading(true);
+    setUploading(true);
     try {
-      await api.createSubmission({ ...form, user_photos: photos });
+      const tempId = crypto.randomUUID();
+      const { urls } = await api.uploadSubmissionPhotos(tempId, photoFiles);
+      setUploading(false);
+      await api.createSubmission({ ...form, user_photos: urls });
       addToast('success', 'Item submitted for review!');
       router.push('/seller/submissions');
     } catch (err: any) {
+      setUploading(false);
       addToast('error', err.message);
     } finally {
       setLoading(false);
@@ -57,7 +63,7 @@ export default function SellerSubmitPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label className="text-sm text-wimc-muted mb-2 block">Photos</label>
-          <PhotoUploader photos={photos} onChange={setPhotos} maxPhotos={8} />
+          <PhotoUploader files={photoFiles} onFilesChange={setPhotoFiles} maxPhotos={8} uploading={uploading} />
         </div>
         <Select label="Brand" options={BRANDS} value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} />
         <Input label="Item Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="e.g., Birkin 30 Togo Leather" />
@@ -77,7 +83,9 @@ export default function SellerSubmitPage() {
             className="w-full bg-wimc-surface border border-wimc-border rounded-lg px-4 py-2.5 text-white placeholder:text-wimc-subtle focus:outline-none focus:border-wimc-border-alt transition-colors resize-none"
           />
         </div>
-        <Button type="submit" size="lg" className="w-full" loading={loading}>Submit for Review</Button>
+        <Button type="submit" size="lg" className="w-full" loading={loading}>
+          {uploading ? 'Uploading photos...' : 'Submit for Review'}
+        </Button>
       </form>
     </div>
   );

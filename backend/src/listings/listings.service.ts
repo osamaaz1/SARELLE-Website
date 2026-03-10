@@ -23,7 +23,7 @@ export class ListingsService {
 
     let query = client
       .from('wimc_listings')
-      .select('*, wimc_profiles!wimc_listings_seller_id_fkey(display_name, avatar_url)', { count: 'exact' })
+      .select('id, name, brand, price, category, status, photos, celebrity_id, listing_type, condition, original_price, created_at, seller_id, wimc_profiles!wimc_listings_seller_id_fkey(display_name, avatar_url)', { count: 'exact' })
       .eq('status', 'published');
 
     if (params.search) {
@@ -69,7 +69,7 @@ export class ListingsService {
     const client = this.supabase.getClient();
     const { data } = await client
       .from('wimc_listings')
-      .select('*, wimc_profiles!wimc_listings_seller_id_fkey(display_name, avatar_url)')
+      .select('id, name, brand, price, category, status, photos, celebrity_id, listing_type, condition, original_price, created_at, seller_id, wimc_profiles!wimc_listings_seller_id_fkey(display_name, avatar_url)')
       .eq('status', 'published')
       .eq('featured', true)
       .order('created_at', { ascending: false })
@@ -81,21 +81,36 @@ export class ListingsService {
     const client = this.supabase.getClient();
     const { data: celebrities } = await client
       .from('wimc_celebrities')
-      .select('*')
+      .select('id, name, bio, followers, avatar_url, user_id, verified, created_at')
       .eq('verified', true)
       .order('followers', { ascending: false });
 
-    const result = [];
-    for (const celeb of celebrities || []) {
-      const { data: listings, count } = await client
-        .from('wimc_listings')
-        .select('*', { count: 'exact' })
-        .eq('celebrity_id', celeb.id)
-        .eq('status', 'published')
-        .limit(4);
-      result.push({ ...celeb, listings: listings || [], totalItems: count || 0 });
+    if (!celebrities?.length) return [];
+
+    // Single query for all celebrity listings instead of N+1
+    const celebIds = celebrities.map(c => c.id);
+    const { data: allListings } = await client
+      .from('wimc_listings')
+      .select('id, name, brand, price, category, status, photos, celebrity_id, listing_type, condition, original_price, created_at')
+      .in('celebrity_id', celebIds)
+      .eq('status', 'published')
+      .order('created_at', { ascending: false });
+
+    // Group listings by celebrity_id
+    const listingsByCeleb = new Map<string, any[]>();
+    for (const listing of allListings || []) {
+      const existing = listingsByCeleb.get(listing.celebrity_id) || [];
+      listingsByCeleb.set(listing.celebrity_id, [...existing, listing]);
     }
-    return result;
+
+    return celebrities.map(celeb => {
+      const celebListings = listingsByCeleb.get(celeb.id) || [];
+      return {
+        ...celeb,
+        listings: celebListings.slice(0, 4),
+        totalItems: celebListings.length,
+      };
+    });
   }
 
   async createFromSubmission(submissionId: string, adminId: string, data: {
@@ -160,7 +175,7 @@ export class ListingsService {
     const client = this.supabase.getClient();
     const { data: existing } = await client
       .from('wimc_saved_items')
-      .select('*')
+      .select('user_id')
       .eq('user_id', userId)
       .eq('listing_id', listingId)
       .single();
@@ -169,8 +184,14 @@ export class ListingsService {
       await client.from('wimc_saved_items').delete().eq('user_id', userId).eq('listing_id', listingId);
       return { saved: false };
     } else {
-      await client.from('wimc_saved_items').insert({ user_id: userId, listing_id: listingId });
-      return { saved: true };
+      // Use try/catch to handle race condition (concurrent save clicks causing duplicate insert)
+      try {
+        await client.from('wimc_saved_items').insert({ user_id: userId, listing_id: listingId });
+        return { saved: true };
+      } catch {
+        // Duplicate — another concurrent request already inserted; treat as already saved
+        return { saved: true };
+      }
     }
   }
 

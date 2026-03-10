@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { href: '/', label: 'Home' },
   { href: '/browse', label: 'Shop' },
   { href: '/celebrities', label: 'Celebrities' },
-  { href: '/seller/submit', label: 'Sell', requiresSeller: true },
+  { href: '/seller/dashboard', label: 'My Closet', requiresSeller: true },
 ];
 
 export function Navbar() {
@@ -30,10 +30,9 @@ export function Navbar() {
       <div className="max-w-[1200px] mx-auto px-6">
         <div className="flex items-center justify-between h-[60px]">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3">
-            <img src="/logo.png" alt="Sarelle" className="h-20 w-auto -my-3" />
+          <Link href="/" className="flex items-center">
             <div>
-              <span className="font-heading text-[22px] font-bold tracking-[1px] leading-none block">SARELLE</span>
+              <span className="font-heading text-[22px] font-bold tracking-[1px] leading-none block">WIMC</span>
               <span className="font-accent text-[13px] text-[#666] block">by Dina Bahgat</span>
             </div>
           </Link>
@@ -99,18 +98,23 @@ export function Navbar() {
           {/* Mobile hamburger */}
           <button
             onClick={() => setMobMenu(!mobMenu)}
-            className="md:hidden flex flex-col gap-1 bg-transparent border-none cursor-pointer"
+            className="md:hidden relative w-11 h-11 -mr-2 flex items-center justify-center"
+            aria-label="Menu"
           >
-            <span className={`w-5 h-0.5 bg-white rounded-sm transition-all duration-200 ${mobMenu ? 'rotate-45 translate-y-[6px]' : ''}`} />
-            <span className={`w-5 h-0.5 bg-white rounded-sm transition-opacity duration-200 ${mobMenu ? 'opacity-0' : ''}`} />
-            <span className={`w-5 h-0.5 bg-white rounded-sm transition-all duration-200 ${mobMenu ? '-rotate-45 -translate-y-[6px]' : ''}`} />
+            <span className={`absolute w-5 h-[2px] bg-white rounded-full transition-all duration-300 ease-in-out ${mobMenu ? 'rotate-45 top-[21px]' : 'top-[15px]'}`} />
+            <span className={`absolute w-5 h-[2px] bg-white rounded-full transition-all duration-300 ease-in-out ${mobMenu ? 'opacity-0 scale-x-0' : 'opacity-100 scale-x-100 top-[21px]'}`} />
+            <span className={`absolute w-5 h-[2px] bg-white rounded-full transition-all duration-300 ease-in-out ${mobMenu ? '-rotate-45 top-[21px]' : 'top-[27px]'}`} />
           </button>
         </div>
       </div>
 
       {/* Mobile menu */}
-      {mobMenu && (
-        <div className="md:hidden bg-wimc-surface border-b border-wimc-border px-6 py-2 pb-4">
+      <div
+        className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
+          mobMenu ? 'max-h-[400px] opacity-100' : 'max-h-0 opacity-0'
+        }`}
+      >
+        <div className="bg-wimc-surface border-b border-wimc-border px-6 py-2 pb-4">
           {NAV_ITEMS.map((item) => {
             if (item.requiresSeller && (!user || !['seller', 'vip_seller'].includes(user.role))) return null;
             const active = isActive(item.href);
@@ -119,7 +123,7 @@ export function Navbar() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobMenu(false)}
-                className={`block py-2.5 text-[14px] ${active ? 'text-white font-bold' : 'text-[#888]'}`}
+                className={`block py-3 text-[16px] min-h-[44px] ${active ? 'text-white font-bold' : 'text-[#888]'}`}
               >
                 {item.label}
               </Link>
@@ -127,8 +131,8 @@ export function Navbar() {
           })}
           {user ? (
             <>
-              <Link href="/dashboard" onClick={() => setMobMenu(false)} className="block py-2.5 text-[14px] text-[#888]">Account</Link>
-              <button onClick={() => { logout(); setMobMenu(false); }} className="block py-2.5 text-[14px] text-wimc-red">Sign Out</button>
+              <Link href="/dashboard" onClick={() => setMobMenu(false)} className="block py-3 text-[16px] min-h-[44px] text-[#888]">Account</Link>
+              <button onClick={() => { logout(); setMobMenu(false); }} className="block py-3 text-[16px] min-h-[44px] text-wimc-red">Sign Out</button>
             </>
           ) : (
             <div className="flex gap-2 pt-2">
@@ -137,7 +141,7 @@ export function Navbar() {
             </div>
           )}
         </div>
-      )}
+      </div>
     </nav>
   );
 }

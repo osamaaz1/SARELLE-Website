@@ -7,9 +7,13 @@ export class SupabaseService {
   private anonClient: SupabaseClient;
 
   constructor() {
-    const url = process.env.SUPABASE_URL!;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const anonKey = process.env.SUPABASE_ANON_KEY!;
+    const url = process.env.SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const anonKey = process.env.SUPABASE_ANON_KEY;
+
+    if (!url || !serviceKey || !anonKey) {
+      throw new Error('Missing required Supabase environment variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY');
+    }
 
     this.adminClient = createClient(url, serviceKey, {
       auth: { autoRefreshToken: false, persistSession: false },

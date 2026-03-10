@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 
 @Injectable()
@@ -11,7 +11,7 @@ export class AdminService {
     const [submissions, listings, orders, payouts] = await Promise.all([
       client.from('wimc_submissions').select('stage', { count: 'exact' }),
       client.from('wimc_listings').select('status', { count: 'exact' }),
-      client.from('wimc_orders').select('status, total', { count: 'exact' }),
+      client.from('wimc_orders').select('total', { count: 'exact' }),
       client.from('wimc_payouts').select('status, amount', { count: 'exact' }),
     ]);
 
@@ -65,7 +65,7 @@ export class AdminService {
       .insert({ ...data, verified: true })
       .select()
       .single();
-    if (error) throw error;
+    if (error) throw new BadRequestException('Failed to create celebrity');
     return celebrity;
   }
 }

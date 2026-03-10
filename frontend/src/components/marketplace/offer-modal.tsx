@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Modal } from '../ui/modal';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { formatPrice, CURRENCY_SYMBOL } from '@/lib/currency';
 
 interface OfferModalProps {
   open: boolean;
@@ -39,9 +40,9 @@ export function OfferModal({ open, onClose, listingName, listingPrice, onSubmit 
         <p className="text-sm text-wimc-muted">
           Make an offer on <span className="text-white font-medium">{listingName}</span>
         </p>
-        <p className="text-sm text-wimc-subtle">Listed price: <span className="text-white">${listingPrice.toLocaleString()}</span></p>
+        <p className="text-sm text-wimc-subtle">Listed price: <span className="text-white">{formatPrice(listingPrice)}</span></p>
         <Input
-          label="Your Offer"
+          label={`Your Offer (${CURRENCY_SYMBOL})`}
           type="number"
           placeholder="Enter amount"
           value={amount}

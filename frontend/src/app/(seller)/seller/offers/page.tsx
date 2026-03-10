@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { EmptyState } from '@/components/ui/empty-state';
+import { formatPrice } from '@/lib/currency';
+import Image from 'next/image';
 
 export default function SellerOffersPage() {
   const { addToast } = useToast();
@@ -49,15 +51,15 @@ export default function SellerOffersPage() {
             <Card key={offer.id} className="p-5">
               <div className="flex items-center gap-4">
                 {offer.wimc_listings?.photos?.[0] && (
-                  <img src={offer.wimc_listings.photos[0]} alt="" className="w-14 h-14 rounded-lg object-cover" />
+                  <Image src={offer.wimc_listings.photos[0]} alt="" width={56} height={56} className="w-14 h-14 rounded-lg object-cover" unoptimized />
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm">{offer.wimc_listings?.name}</p>
-                  <p className="text-xs text-wimc-subtle">Listed at ${offer.wimc_listings?.price?.toLocaleString()}</p>
+                  <p className="text-xs text-wimc-subtle">Listed at {formatPrice(offer.wimc_listings?.price)}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <p className="font-heading font-bold text-wimc-yellow">${offer.amount?.toLocaleString()}</p>
+                    <p className="font-heading font-bold text-wimc-yellow">{formatPrice(offer.amount)}</p>
                     <div className="flex items-center gap-1 mt-1">
                       <Avatar src={offer.wimc_profiles?.avatar_url} name={offer.wimc_profiles?.display_name || 'Buyer'} size="sm" />
                       <span className="text-xs text-wimc-subtle">{offer.wimc_profiles?.display_name}</span>

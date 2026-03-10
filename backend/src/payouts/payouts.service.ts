@@ -45,14 +45,15 @@ export class PayoutsService {
       .eq('id', order.seller_id)
       .single();
 
-    const tier = profile?.tier || 'Bronze';
+    if (!profile) throw new NotFoundException('Seller profile not found');
+    const tier = profile.tier || 'Bronze';
     const commissionRate = COMMISSION_RATES[tier] || 20;
     const commissionAmount = Math.round(order.item_price * (commissionRate / 100) * 100) / 100;
     const payoutAmount = order.item_price - commissionAmount;
 
     const { data: payout, error } = await client
       .from('wimc_payouts')
-      .insert({
+      .upsert({
         order_id: orderId,
         seller_id: order.seller_id,
         amount: payoutAmount,
@@ -60,7 +61,7 @@ export class PayoutsService {
         commission_amount: commissionAmount,
         status: 'pending',
         scheduled_at: new Date().toISOString(),
-      })
+      }, { onConflict: 'order_id', ignoreDuplicates: true })
       .select()
       .single();
     if (error) throw new BadRequestException(error.message);

@@ -8,6 +8,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { formatPrice } from '@/lib/currency';
+import Image from 'next/image';
 
 const STAGES: Record<string, { label: string; color: string }> = {
   pending_review: { label: 'Pending Review', color: '#FFBB44' },
@@ -75,7 +77,9 @@ export default function SellerSubmissionDetailPage() {
       {submission.user_photos?.length > 0 && (
         <div className="grid grid-cols-4 gap-2">
           {submission.user_photos.map((photo: string, i: number) => (
-            <img key={i} src={photo} alt="" className="w-full aspect-square rounded-lg object-cover" />
+            <div key={i} className="relative aspect-square rounded-lg overflow-hidden">
+              <Image src={photo} alt="" fill className="object-cover" sizes="(max-width: 768px) 25vw, 160px" unoptimized />
+            </div>
           ))}
         </div>
       )}
@@ -89,7 +93,7 @@ export default function SellerSubmissionDetailPage() {
       {submission.stage === 'price_suggested' && submission.proposed_price && (
         <Card className="p-6 border-wimc-blue/30">
           <h3 className="font-heading font-semibold mb-2">Price Proposal</h3>
-          <p className="text-2xl font-heading font-bold text-wimc-blue">${submission.proposed_price.toLocaleString()}</p>
+          <p className="text-2xl font-heading font-bold text-wimc-blue">{formatPrice(submission.proposed_price)}</p>
           {submission.admin_notes && <p className="text-sm text-wimc-subtle mt-2">{submission.admin_notes}</p>}
           <div className="flex gap-3 mt-4">
             <Button onClick={handleAccept} loading={acting}>Accept Price</Button>

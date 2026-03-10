@@ -1,0 +1,16 @@
+{
+  "name": "WIMC - Luxury Resale Marketplace",
+  "short_name": "WIMC",
+  "description": "Authenticated luxury items from celebrity closets and verified sellers",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0A0A",
+  "theme_color": "#0A0A0A",
+  "icons": [
+    {
+      "src": "/logo.webp",
+      "sizes": "400x400",
+      "type": "image/webp"
+    }
+  ]
+}

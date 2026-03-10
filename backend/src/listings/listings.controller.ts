@@ -20,11 +20,11 @@ export class ListingsController {
   ) {
     return this.listingsService.browse({
       search, category, brand, condition,
-      minPrice: minPrice ? Number(minPrice) : undefined,
-      maxPrice: maxPrice ? Number(maxPrice) : undefined,
+      minPrice: minPrice ? Math.max(Number(minPrice) || 0, 0) : undefined,
+      maxPrice: maxPrice ? Math.max(Number(maxPrice) || 0, 0) : undefined,
       sort,
-      page: page ? Number(page) : 1,
-      limit: limit ? Number(limit) : 20,
+      page: Math.max(Number(page) || 1, 1),
+      limit: Math.min(Math.max(Number(limit) || 20, 1), 100),
     });
   }
 

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { EmptyState } from '@/components/ui/empty-state';
+import Image from 'next/image';
 
 export default function AdminQCPage() {
   const { addToast } = useToast();
@@ -42,7 +43,7 @@ export default function AdminQCPage() {
           {items.map((sub: any) => (
             <Card key={sub.id} className="p-5 space-y-4">
               <div className="flex items-center gap-4">
-                {sub.user_photos?.[0] && <img src={sub.user_photos[0]} alt="" className="w-16 h-16 rounded-lg object-cover" />}
+                {sub.user_photos?.[0] && <Image src={sub.user_photos[0]} alt="" width={64} height={64} className="w-16 h-16 rounded-lg object-cover" unoptimized />}
                 <div className="flex-1">
                   <p className="font-medium">{sub.name}</p>
                   <p className="text-sm text-wimc-subtle">{sub.brand} &middot; {sub.category} &middot; {sub.condition}</p>

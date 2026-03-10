@@ -11,6 +11,7 @@ interface ModalProps {
 
 export function Modal({ open, onClose, title, children, maxWidth = 'max-w-lg' }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const mouseDownTarget = useRef<EventTarget | null>(null);
 
   useEffect(() => {
     if (open) document.body.style.overflow = 'hidden';
@@ -24,7 +25,12 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-lg' }:
     <div
       ref={overlayRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+      onMouseDown={(e) => { mouseDownTarget.current = e.target; }}
+      onClick={(e) => {
+        // Only close if both mousedown AND mouseup happened on the overlay
+        // This prevents closing when selecting text inside the modal
+        if (e.target === overlayRef.current && mouseDownTarget.current === overlayRef.current) onClose();
+      }}
     >
       <div className={`${maxWidth} w-full bg-wimc-surface border border-wimc-border rounded-2xl shadow-2xl animate-fade-in`}>
         {title && (

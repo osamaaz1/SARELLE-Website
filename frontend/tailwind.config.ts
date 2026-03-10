@@ -32,9 +32,9 @@ const config: Config = {
         },
       },
       fontFamily: {
-        heading: ['Playfair Display', 'serif'],
-        body: ['DM Sans', 'sans-serif'],
-        accent: ['Dancing Script', 'cursive'],
+        heading: ['var(--font-playfair)', 'Playfair Display', 'serif'],
+        body: ['var(--font-dm-sans)', 'DM Sans', 'sans-serif'],
+        accent: ['var(--font-dancing)', 'Dancing Script', 'cursive'],
       },
       aspectRatio: {
         '3/4': '3 / 4',

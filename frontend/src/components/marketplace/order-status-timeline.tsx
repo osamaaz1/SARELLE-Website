@@ -1,5 +1,3 @@
-'use client';
-
 interface TimelineEvent {
   status: string;
   label: string;

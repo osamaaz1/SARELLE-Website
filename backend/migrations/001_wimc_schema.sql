@@ -1,6 +1,6 @@
 -- =============================================
 -- WIMC Luxury Resale Marketplace - Full Schema
--- Run this migration against your Supabase DB when ready
+-- Safe to re-run (fully idempotent)
 -- =============================================
 
 -- === ENUMS ===
@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS wimc_profiles (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+DROP TRIGGER IF EXISTS wimc_profiles_updated_at ON wimc_profiles;
 CREATE TRIGGER wimc_profiles_updated_at BEFORE UPDATE ON wimc_profiles
   FOR EACH ROW EXECUTE FUNCTION wimc_set_updated_at();
 
@@ -76,6 +77,7 @@ CREATE TABLE IF NOT EXISTS wimc_seller_profiles (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+DROP TRIGGER IF EXISTS wimc_seller_profiles_updated_at ON wimc_seller_profiles;
 CREATE TRIGGER wimc_seller_profiles_updated_at BEFORE UPDATE ON wimc_seller_profiles
   FOR EACH ROW EXECUTE FUNCTION wimc_set_updated_at();
 
@@ -89,6 +91,7 @@ CREATE TABLE IF NOT EXISTS wimc_vip_profiles (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+DROP TRIGGER IF EXISTS wimc_vip_profiles_updated_at ON wimc_vip_profiles;
 CREATE TRIGGER wimc_vip_profiles_updated_at BEFORE UPDATE ON wimc_vip_profiles
   FOR EACH ROW EXECUTE FUNCTION wimc_set_updated_at();
 
@@ -118,10 +121,11 @@ CREATE TABLE IF NOT EXISTS wimc_submissions (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+DROP TRIGGER IF EXISTS wimc_submissions_updated_at ON wimc_submissions;
 CREATE TRIGGER wimc_submissions_updated_at BEFORE UPDATE ON wimc_submissions
   FOR EACH ROW EXECUTE FUNCTION wimc_set_updated_at();
-CREATE INDEX idx_wimc_submissions_seller ON wimc_submissions(seller_id);
-CREATE INDEX idx_wimc_submissions_stage ON wimc_submissions(stage);
+CREATE INDEX IF NOT EXISTS idx_wimc_submissions_seller ON wimc_submissions(seller_id);
+CREATE INDEX IF NOT EXISTS idx_wimc_submissions_stage ON wimc_submissions(stage);
 
 -- 5. Submission Events (audit trail)
 CREATE TABLE IF NOT EXISTS wimc_submission_events (
@@ -133,7 +137,7 @@ CREATE TABLE IF NOT EXISTS wimc_submission_events (
   new_stage wimc_submission_stage NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_wimc_submission_events_sub ON wimc_submission_events(submission_id);
+CREATE INDEX IF NOT EXISTS idx_wimc_submission_events_sub ON wimc_submission_events(submission_id);
 
 -- 6. Celebrities
 CREATE TABLE IF NOT EXISTS wimc_celebrities (
@@ -147,6 +151,7 @@ CREATE TABLE IF NOT EXISTS wimc_celebrities (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+DROP TRIGGER IF EXISTS wimc_celebrities_updated_at ON wimc_celebrities;
 CREATE TRIGGER wimc_celebrities_updated_at BEFORE UPDATE ON wimc_celebrities
   FOR EACH ROW EXECUTE FUNCTION wimc_set_updated_at();
 
@@ -169,13 +174,14 @@ CREATE TABLE IF NOT EXISTS wimc_listings (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+DROP TRIGGER IF EXISTS wimc_listings_updated_at ON wimc_listings;
 CREATE TRIGGER wimc_listings_updated_at BEFORE UPDATE ON wimc_listings
   FOR EACH ROW EXECUTE FUNCTION wimc_set_updated_at();
-CREATE INDEX idx_wimc_listings_seller ON wimc_listings(seller_id);
-CREATE INDEX idx_wimc_listings_status ON wimc_listings(status);
-CREATE INDEX idx_wimc_listings_category ON wimc_listings(category);
-CREATE INDEX idx_wimc_listings_brand ON wimc_listings(brand);
-CREATE INDEX idx_wimc_listings_celebrity ON wimc_listings(celebrity_id);
+CREATE INDEX IF NOT EXISTS idx_wimc_listings_seller ON wimc_listings(seller_id);
+CREATE INDEX IF NOT EXISTS idx_wimc_listings_status ON wimc_listings(status);
+CREATE INDEX IF NOT EXISTS idx_wimc_listings_category ON wimc_listings(category);
+CREATE INDEX IF NOT EXISTS idx_wimc_listings_brand ON wimc_listings(brand);
+CREATE INDEX IF NOT EXISTS idx_wimc_listings_celebrity ON wimc_listings(celebrity_id);
 
 -- 8. Offers
 CREATE TABLE IF NOT EXISTS wimc_offers (
@@ -188,10 +194,11 @@ CREATE TABLE IF NOT EXISTS wimc_offers (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+DROP TRIGGER IF EXISTS wimc_offers_updated_at ON wimc_offers;
 CREATE TRIGGER wimc_offers_updated_at BEFORE UPDATE ON wimc_offers
   FOR EACH ROW EXECUTE FUNCTION wimc_set_updated_at();
-CREATE INDEX idx_wimc_offers_listing ON wimc_offers(listing_id);
-CREATE INDEX idx_wimc_offers_buyer ON wimc_offers(buyer_id);
+CREATE INDEX IF NOT EXISTS idx_wimc_offers_listing ON wimc_offers(listing_id);
+CREATE INDEX IF NOT EXISTS idx_wimc_offers_buyer ON wimc_offers(buyer_id);
 
 -- 9. Orders
 CREATE TABLE IF NOT EXISTS wimc_orders (
@@ -213,11 +220,12 @@ CREATE TABLE IF NOT EXISTS wimc_orders (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+DROP TRIGGER IF EXISTS wimc_orders_updated_at ON wimc_orders;
 CREATE TRIGGER wimc_orders_updated_at BEFORE UPDATE ON wimc_orders
   FOR EACH ROW EXECUTE FUNCTION wimc_set_updated_at();
-CREATE INDEX idx_wimc_orders_buyer ON wimc_orders(buyer_id);
-CREATE INDEX idx_wimc_orders_seller ON wimc_orders(seller_id);
-CREATE INDEX idx_wimc_orders_status ON wimc_orders(status);
+CREATE INDEX IF NOT EXISTS idx_wimc_orders_buyer ON wimc_orders(buyer_id);
+CREATE INDEX IF NOT EXISTS idx_wimc_orders_seller ON wimc_orders(seller_id);
+CREATE INDEX IF NOT EXISTS idx_wimc_orders_status ON wimc_orders(status);
 
 -- 10. Order Events (audit trail)
 CREATE TABLE IF NOT EXISTS wimc_order_events (
@@ -229,7 +237,7 @@ CREATE TABLE IF NOT EXISTS wimc_order_events (
   reason TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_wimc_order_events_order ON wimc_order_events(order_id);
+CREATE INDEX IF NOT EXISTS idx_wimc_order_events_order ON wimc_order_events(order_id);
 
 -- 11. Payouts
 CREATE TABLE IF NOT EXISTS wimc_payouts (
@@ -246,9 +254,10 @@ CREATE TABLE IF NOT EXISTS wimc_payouts (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT wimc_payouts_order_unique UNIQUE(order_id)
 );
+DROP TRIGGER IF EXISTS wimc_payouts_updated_at ON wimc_payouts;
 CREATE TRIGGER wimc_payouts_updated_at BEFORE UPDATE ON wimc_payouts
   FOR EACH ROW EXECUTE FUNCTION wimc_set_updated_at();
-CREATE INDEX idx_wimc_payouts_seller ON wimc_payouts(seller_id);
+CREATE INDEX IF NOT EXISTS idx_wimc_payouts_seller ON wimc_payouts(seller_id);
 
 -- 12. Notifications
 CREATE TABLE IF NOT EXISTS wimc_notifications (
@@ -263,10 +272,11 @@ CREATE TABLE IF NOT EXISTS wimc_notifications (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+DROP TRIGGER IF EXISTS wimc_notifications_updated_at ON wimc_notifications;
 CREATE TRIGGER wimc_notifications_updated_at BEFORE UPDATE ON wimc_notifications
   FOR EACH ROW EXECUTE FUNCTION wimc_set_updated_at();
-CREATE INDEX idx_wimc_notifications_user ON wimc_notifications(user_id);
-CREATE INDEX idx_wimc_notifications_unread ON wimc_notifications(user_id) WHERE read = false;
+CREATE INDEX IF NOT EXISTS idx_wimc_notifications_user ON wimc_notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_wimc_notifications_unread ON wimc_notifications(user_id) WHERE read = false;
 
 -- 13. Saved Items (Wishlist)
 CREATE TABLE IF NOT EXISTS wimc_saved_items (
@@ -285,7 +295,7 @@ CREATE TABLE IF NOT EXISTS wimc_idempotency_keys (
   expires_at TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_wimc_idempotency_expires ON wimc_idempotency_keys(expires_at);
+CREATE INDEX IF NOT EXISTS idx_wimc_idempotency_expires ON wimc_idempotency_keys(expires_at);
 
 -- 15. Audit Log
 CREATE TABLE IF NOT EXISTS wimc_audit_log (
@@ -298,8 +308,8 @@ CREATE TABLE IF NOT EXISTS wimc_audit_log (
   new_value JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_wimc_audit_entity ON wimc_audit_log(entity_type, entity_id);
-CREATE INDEX idx_wimc_audit_actor ON wimc_audit_log(actor_id);
+CREATE INDEX IF NOT EXISTS idx_wimc_audit_entity ON wimc_audit_log(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_wimc_audit_actor ON wimc_audit_log(actor_id);
 
 -- === ROW LEVEL SECURITY ===
 ALTER TABLE wimc_profiles ENABLE ROW LEVEL SECURITY;
@@ -318,38 +328,39 @@ ALTER TABLE wimc_celebrities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wimc_idempotency_keys ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wimc_audit_log ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies: Users can read their own profile
+-- RLS Policies (drop first to allow re-run)
+DROP POLICY IF EXISTS wimc_profiles_select_own ON wimc_profiles;
 CREATE POLICY wimc_profiles_select_own ON wimc_profiles FOR SELECT USING (auth.uid() = id);
+DROP POLICY IF EXISTS wimc_profiles_update_own ON wimc_profiles;
 CREATE POLICY wimc_profiles_update_own ON wimc_profiles FOR UPDATE USING (auth.uid() = id);
 
--- RLS: Sellers see their own submissions
+DROP POLICY IF EXISTS wimc_submissions_select_own ON wimc_submissions;
 CREATE POLICY wimc_submissions_select_own ON wimc_submissions FOR SELECT USING (auth.uid() = seller_id);
+DROP POLICY IF EXISTS wimc_submissions_insert_own ON wimc_submissions;
 CREATE POLICY wimc_submissions_insert_own ON wimc_submissions FOR INSERT WITH CHECK (auth.uid() = seller_id);
 
--- RLS: Published listings are public
+DROP POLICY IF EXISTS wimc_listings_select_published ON wimc_listings;
 CREATE POLICY wimc_listings_select_published ON wimc_listings FOR SELECT USING (status = 'published' OR seller_id = auth.uid());
 
--- RLS: Users see own offers
+DROP POLICY IF EXISTS wimc_offers_select_own ON wimc_offers;
 CREATE POLICY wimc_offers_select_own ON wimc_offers FOR SELECT USING (buyer_id = auth.uid());
+DROP POLICY IF EXISTS wimc_offers_insert_own ON wimc_offers;
 CREATE POLICY wimc_offers_insert_own ON wimc_offers FOR INSERT WITH CHECK (buyer_id = auth.uid());
 
--- RLS: Users see own orders
+DROP POLICY IF EXISTS wimc_orders_select_own ON wimc_orders;
 CREATE POLICY wimc_orders_select_own ON wimc_orders FOR SELECT USING (buyer_id = auth.uid() OR seller_id = auth.uid());
 
--- RLS: Users see own notifications
+DROP POLICY IF EXISTS wimc_notifications_select_own ON wimc_notifications;
 CREATE POLICY wimc_notifications_select_own ON wimc_notifications FOR SELECT USING (user_id = auth.uid());
+DROP POLICY IF EXISTS wimc_notifications_update_own ON wimc_notifications;
 CREATE POLICY wimc_notifications_update_own ON wimc_notifications FOR UPDATE USING (user_id = auth.uid());
 
--- RLS: Users manage own saved items
+DROP POLICY IF EXISTS wimc_saved_items_select_own ON wimc_saved_items;
 CREATE POLICY wimc_saved_items_select_own ON wimc_saved_items FOR SELECT USING (user_id = auth.uid());
+DROP POLICY IF EXISTS wimc_saved_items_insert_own ON wimc_saved_items;
 CREATE POLICY wimc_saved_items_insert_own ON wimc_saved_items FOR INSERT WITH CHECK (user_id = auth.uid());
+DROP POLICY IF EXISTS wimc_saved_items_delete_own ON wimc_saved_items;
 CREATE POLICY wimc_saved_items_delete_own ON wimc_saved_items FOR DELETE USING (user_id = auth.uid());
 
--- RLS: Celebrities are publicly readable
+DROP POLICY IF EXISTS wimc_celebrities_select_all ON wimc_celebrities;
 CREATE POLICY wimc_celebrities_select_all ON wimc_celebrities FOR SELECT USING (true);
-
--- === STORAGE BUCKETS ===
--- Run these in the Supabase dashboard or via API:
--- INSERT INTO storage.buckets (id, name, public) VALUES ('wimc-submission-photos', 'wimc-submission-photos', false);
--- INSERT INTO storage.buckets (id, name, public) VALUES ('wimc-listing-photos', 'wimc-listing-photos', true);
--- INSERT INTO storage.buckets (id, name, public) VALUES ('wimc-avatars', 'wimc-avatars', true);

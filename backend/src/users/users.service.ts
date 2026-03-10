@@ -40,7 +40,7 @@ export class UsersService {
 
     const { data: listings } = await client
       .from('wimc_listings')
-      .select('*')
+      .select('id, name, brand, price, category, status, photos, celebrity_id, listing_type, condition, original_price, created_at')
       .eq('seller_id', sellerId)
       .eq('status', 'published')
       .order('created_at', { ascending: false });

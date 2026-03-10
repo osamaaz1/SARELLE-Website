@@ -13,7 +13,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
         {label && <label className="text-sm text-wimc-muted">{label}</label>}
         <select
           ref={ref}
-          className={`w-full bg-wimc-surface border border-wimc-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-wimc-border-alt transition-colors appearance-none ${className}`}
+          className={`w-full bg-wimc-surface border border-wimc-border rounded-lg px-4 py-3.5 text-[16px] text-white focus:outline-none focus:border-wimc-border-alt transition-colors appearance-none ${className}`}
           {...props}
         >
           {options.map((opt) => (

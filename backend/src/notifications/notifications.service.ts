@@ -1,9 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { WimcGateway } from '../gateway/wimc.gateway';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly supabase: SupabaseService) {}
+  private readonly logger = new Logger(NotificationsService.name);
+
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly gateway: WimcGateway,
+  ) {}
 
   async create(userId: string, data: {
     type: string;
@@ -13,11 +19,22 @@ export class NotificationsService {
     metadata?: Record<string, any>;
   }) {
     const client = this.supabase.getClient();
-    const { data: notification } = await client
+    const { data: notification, error } = await client
       .from('wimc_notifications')
       .insert({ user_id: userId, ...data, read: false })
       .select()
       .single();
+    if (error) this.logger.error('Notification insert failed', error);
+
+    // Push notification via WebSocket in real-time
+    if (notification) {
+      try {
+        this.gateway.emitToUser(userId, 'notification', notification);
+      } catch (e) {
+        this.logger.error('WebSocket emit error', e);
+      }
+    }
+
     return notification;
   }
 

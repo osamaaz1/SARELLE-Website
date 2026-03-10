@@ -3,11 +3,14 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
+import dynamic from 'next/dynamic';
 import { ProductCard } from '@/components/marketplace/product-card';
-import { FilterPanel } from '@/components/marketplace/filter-panel';
+
+const FilterPanel = dynamic(() => import('@/components/marketplace/filter-panel').then(m => ({ default: m.FilterPanel })));
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Button } from '@/components/ui/button';
+import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 
 export default function BrowsePage() {
   return (
@@ -20,6 +23,7 @@ export default function BrowsePage() {
 function BrowseContent() {
   const searchParams = useSearchParams();
   const [listings, setListings] = useState<any[]>([]);
+  const [auctionMap, setAuctionMap] = useState<Record<string, any>>({});
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -43,9 +47,23 @@ function BrowseContent() {
       if (filters.sort) params.sort = filters.sort;
 
       const res = await api.browseListings(params);
-      setListings(res.listings || []);
+      const items = res.listings || [];
+      setListings(items);
       setTotal(res.total || 0);
       setTotalPages(res.totalPages || 1);
+
+      // Fetch auction data for auction-type listings
+      const auctionItems = items.filter((l: any) => l.celebrity_id || l.bidding || l.listing_type === 'auction');
+      if (auctionItems.length > 0) {
+        const auctions = await Promise.all(
+          auctionItems.map((l: any) => api.getAuction(l.id).catch(() => null))
+        );
+        const map: Record<string, any> = {};
+        auctionItems.forEach((l: any, i: number) => {
+          if (auctions[i]) map[l.id] = auctions[i];
+        });
+        setAuctionMap(map);
+      }
     } catch {
       setListings([]);
     } finally {
@@ -61,32 +79,33 @@ function BrowseContent() {
   };
 
   return (
+    <PullToRefresh onRefresh={fetchListings}>
     <div className="max-w-[1200px] mx-auto px-6 py-8 animate-fade-in">
       <h1 className="font-heading text-[28px] font-bold mb-5">Shop</h1>
 
       <div className="space-y-4">
         {/* Search */}
-        <div className="flex items-center gap-2 bg-wimc-surface rounded-[10px] border border-wimc-border px-3.5 py-2.5 max-w-[360px]">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2">
+        <div className="flex items-center gap-3 bg-wimc-surface rounded-[12px] border border-wimc-border px-4 py-3 sm:max-w-[400px]">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2">
             <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
           </svg>
           <input
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search..."
-            className="bg-transparent border-none outline-none text-[13px] text-white flex-1 placeholder:text-[#555]"
+            placeholder="Search brands, items..."
+            className="bg-transparent border-none outline-none text-[16px] text-white flex-1 placeholder:text-[#555] min-h-[28px]"
           />
         </div>
 
         <FilterPanel filters={filters} onChange={handleFilterChange} />
 
-        <p className="text-[12px] text-[#555]">{total} items</p>
+        <p className="text-[13px] text-[#555]">{total} items</p>
 
         {loading ? (
           <LoadingSpinner />
         ) : listings.length > 0 ? (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
               {listings.map((item: any) => (
                 <ProductCard
                   key={item.id}
@@ -99,7 +118,10 @@ function BrowseContent() {
                   category={item.category}
                   originalPrice={item.original_price}
                   bidding={item.bidding}
+                  celebrity_id={item.celebrity_id}
+                  listing_type={item.listing_type}
                   bids={item.bids}
+                  auction={auctionMap[item.id] || null}
                 />
               ))}
             </div>
@@ -116,5 +138,6 @@ function BrowseContent() {
         )}
       </div>
     </div>
+    </PullToRefresh>
   );
 }

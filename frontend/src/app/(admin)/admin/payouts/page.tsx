@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { EmptyState } from '@/components/ui/empty-state';
+import { formatPrice } from '@/lib/currency';
 
 const statusColors: Record<string, string> = {
   pending: '#FFBB44', scheduled: '#88BBFF', processing: '#AA88FF', sent: '#44DD66', failed: '#FF4444',
@@ -54,10 +55,10 @@ export default function AdminPayoutsPage() {
             <Card key={payout.id} className="p-5 flex items-center gap-4">
               <div className="flex-1">
                 <p className="font-medium text-sm">{payout.wimc_profiles?.display_name || 'Seller'}</p>
-                <p className="text-xs text-wimc-subtle">Commission: {payout.commission_rate}% (${payout.commission_amount?.toLocaleString()})</p>
+                <p className="text-xs text-wimc-subtle">Commission: {payout.commission_rate}% ({formatPrice(payout.commission_amount)})</p>
               </div>
               <div className="text-right">
-                <p className="font-heading font-bold">${payout.amount?.toLocaleString()}</p>
+                <p className="font-heading font-bold">{formatPrice(payout.amount)}</p>
                 <Badge color={statusColors[payout.status]}>{payout.status}</Badge>
               </div>
               <div className="flex gap-2">

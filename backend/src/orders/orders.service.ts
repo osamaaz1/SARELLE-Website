@@ -1,18 +1,38 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { EmailService } from '../email/email.service';
+import { WimcGateway } from '../gateway/wimc.gateway';
 
 const SERVICE_FEE_RATE = 0.20;
 const DEFAULT_SHIPPING_FEE = 50;
 
+const VALID_ORDER_TRANSITIONS: Record<string, string[]> = {
+  pending_payment: ['paid', 'cancelled'],
+  paid: ['processing', 'cancelled'],
+  processing: ['shipped'],
+  shipped: ['delivered'],
+  delivered: ['completed', 'disputed'],
+  completed: [],
+  cancelled: [],
+  disputed: ['completed', 'cancelled'],
+};
+
 @Injectable()
 export class OrdersService {
-  constructor(private readonly supabase: SupabaseService) {}
+  private readonly logger = new Logger(OrdersService.name);
+
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly emailService: EmailService,
+    private readonly gateway: WimcGateway,
+  ) {}
 
   async create(buyerId: string, data: {
     listing_id: string;
-    shipping_address: Record<string, any>;
+    shipping_address: { street: string; city: string; zip: string; country: string; [key: string]: any };
     idempotency_key: string;
     offer_id?: string;
+    auction_id?: string;
   }) {
     const client = this.supabase.getClient();
 
@@ -24,18 +44,48 @@ export class OrdersService {
       .single();
     if (existing) return existing.response_body;
 
+    // Store idempotency key FIRST with pending status to prevent duplicates on crash
+    await client.from('wimc_idempotency_keys').insert({
+      key: data.idempotency_key,
+      user_id: buyerId,
+      endpoint: 'POST /orders',
+      response_body: { status: 'pending' },
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    });
+
     const { data: listing } = await client
       .from('wimc_listings')
       .select('*')
       .eq('id', data.listing_id)
       .single();
     if (!listing) throw new NotFoundException('Listing not found');
-    if (!['published', 'reserved'].includes(listing.status)) {
+
+    // Atomic: mark listing as sold only if currently available (prevents double-buy)
+    const { data: claimed, error: claimError } = await client
+      .from('wimc_listings')
+      .update({ status: 'sold', updated_at: new Date().toISOString() })
+      .eq('id', data.listing_id)
+      .in('status', ['published', 'reserved'])
+      .select()
+      .single();
+    if (claimError || !claimed) {
       throw new BadRequestException('Listing not available for purchase');
     }
 
     let itemPrice = listing.price;
-    if (data.offer_id) {
+    if (data.auction_id) {
+      // Auction winner checkout
+      const { data: auction } = await client
+        .from('wimc_auctions')
+        .select('*')
+        .eq('id', data.auction_id)
+        .eq('status', 'ended')
+        .single();
+      if (!auction) throw new BadRequestException('Invalid auction');
+      if (auction.current_winner_id !== buyerId) throw new ForbiddenException('You are not the auction winner');
+      if (auction.reserve_price && !auction.reserve_met) throw new BadRequestException('Reserve price was not met');
+      itemPrice = auction.current_price;
+    } else if (data.offer_id) {
       const { data: offer } = await client
         .from('wimc_offers')
         .select('*')
@@ -69,27 +119,41 @@ export class OrdersService {
       .single();
     if (error) throw new BadRequestException(error.message);
 
-    // Mark listing as sold
-    await client.from('wimc_listings').update({ status: 'sold', updated_at: new Date().toISOString() }).eq('id', data.listing_id);
+    // Parallelize post-insert writes: order event + idempotency key update
+    await Promise.all([
+      client.from('wimc_order_events').insert({
+        order_id: order.id,
+        from_status: null,
+        to_status: 'pending_payment',
+        changed_by: buyerId,
+      }),
+      client.from('wimc_idempotency_keys')
+        .update({ response_body: order })
+        .eq('key', data.idempotency_key),
+    ]);
 
-    // Add order event
-    await client.from('wimc_order_events').insert({
-      order_id: order.id,
-      from_status: null,
-      to_status: 'pending_payment',
-      changed_by: buyerId,
-    });
+    // Send order confirmation emails
+    this.sendOrderEmails(buyerId, listing.seller_id, listing.name || listing.brand, total, itemPrice, order.id)
+      .catch(e => this.logger.error('Email error', e));
 
-    // Store idempotency
-    await client.from('wimc_idempotency_keys').insert({
-      key: data.idempotency_key,
-      user_id: buyerId,
-      endpoint: 'POST /orders',
-      response_body: order,
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    });
+    // Real-time: notify seller + admin of new order
+    this.gateway.emitToUser(listing.seller_id, 'order:new', order);
+    this.gateway.emitToAdmin('order:new', order);
 
     return order;
+  }
+
+  private async sendOrderEmails(buyerId: string, sellerId: string, itemName: string, total: number, itemPrice: number, orderId: string) {
+    const client = this.supabase.getClient();
+    const [buyerAuth, sellerAuth] = await Promise.all([
+      client.auth.admin.getUserById(buyerId),
+      client.auth.admin.getUserById(sellerId),
+    ]);
+    const buyerEmail = buyerAuth.data?.user?.email;
+    const sellerEmail = sellerAuth.data?.user?.email;
+    if (buyerEmail && sellerEmail) {
+      await this.emailService.sendOrderConfirmation(buyerEmail, sellerEmail, itemName, total, itemPrice, orderId);
+    }
   }
 
   async listByUser(userId: string, role: string) {
@@ -129,6 +193,15 @@ export class OrdersService {
       .single();
     if (!order) throw new NotFoundException('Order not found');
 
+    // Validate status transition
+    const allowedNext = VALID_ORDER_TRANSITIONS[order.status];
+    if (!allowedNext) {
+      throw new BadRequestException(`Unknown current order status: ${order.status}`);
+    }
+    if (!allowedNext.includes(status)) {
+      throw new BadRequestException(`Cannot transition from '${order.status}' to '${status}'. Allowed: ${allowedNext.join(', ') || 'none'}`);
+    }
+
     const updates: Record<string, any> = {
       status,
       updated_at: new Date().toISOString(),
@@ -137,7 +210,7 @@ export class OrdersService {
     if (status === 'shipped') updates.shipped_at = new Date().toISOString();
     if (status === 'delivered') {
       updates.delivered_at = new Date().toISOString();
-      const inspectionDays = parseInt(process.env.PAYOUT_DELAY_DAYS || '3');
+      const inspectionDays = parseInt(process.env.PAYOUT_DELAY_DAYS || '3') || 3;
       updates.inspection_ends_at = new Date(Date.now() + inspectionDays * 24 * 60 * 60 * 1000).toISOString();
     }
 
@@ -152,6 +225,30 @@ export class OrdersService {
       reason: data?.reason,
     });
 
+    // Send shipping update email to buyer
+    if (status === 'shipped' || status === 'delivered') {
+      this.sendShippingEmail(order.buyer_id, order.listing_id, status, data?.tracking_number)
+        .catch(e => this.logger.error('Email error', e));
+    }
+
+    // Real-time: notify buyer + seller of status change
+    const statusPayload = { id: orderId, status, tracking_number: data?.tracking_number };
+    this.gateway.emitToUser(order.buyer_id, 'order:status-changed', statusPayload);
+    this.gateway.emitToUser(order.seller_id, 'order:status-changed', statusPayload);
+
     return { ...order, ...updates };
+  }
+
+  private async sendShippingEmail(buyerId: string, listingId: string, status: string, trackingNumber?: string) {
+    const client = this.supabase.getClient();
+    const [buyerAuth, listing] = await Promise.all([
+      client.auth.admin.getUserById(buyerId),
+      client.from('wimc_listings').select('name, brand').eq('id', listingId).single(),
+    ]);
+    const buyerEmail = buyerAuth.data?.user?.email;
+    const itemName = listing.data ? `${listing.data.brand} ${listing.data.name}` : 'your item';
+    if (buyerEmail) {
+      await this.emailService.sendShippingUpdate(buyerEmail, itemName, status, trackingNumber);
+    }
   }
 }
