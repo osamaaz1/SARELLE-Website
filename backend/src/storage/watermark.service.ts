@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import * as sharp from 'sharp';
+import sharp from 'sharp';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
