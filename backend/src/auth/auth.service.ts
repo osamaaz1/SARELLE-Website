@@ -5,7 +5,7 @@ import { SupabaseService } from '../supabase/supabase.service';
 export class AuthService {
   constructor(private readonly supabase: SupabaseService) {}
 
-  async register(email: string, password: string, role: 'buyer' | 'seller', displayName: string) {
+  async register(email: string, password: string, role: 'customer', displayName: string) {
     const admin = this.supabase.getClient();
 
     const { data: authData, error: authError } = await admin.auth.admin.createUser({
@@ -27,9 +27,7 @@ export class AuthService {
       throw new BadRequestException('Failed to create profile');
     }
 
-    if (role === 'seller') {
-      await admin.from('wimc_seller_profiles').insert({ user_id: authData.user.id });
-    }
+    // Seller profile is created on-demand when user first submits an item
 
     // Use anon client to get a real user session
     const anon = this.supabase.getAnonClient();

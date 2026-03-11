@@ -67,14 +67,28 @@ export class ListingsService {
 
   async getFeatured() {
     const client = this.supabase.getClient();
-    const { data } = await client
+    const select = 'id, name, brand, price, category, status, photos, celebrity_id, listing_type, condition, original_price, created_at, seller_id, wimc_profiles!wimc_listings_seller_id_fkey(display_name, avatar_url)';
+
+    // Try featured first
+    const { data: featured } = await client
       .from('wimc_listings')
-      .select('id, name, brand, price, category, status, photos, celebrity_id, listing_type, condition, original_price, created_at, seller_id, wimc_profiles!wimc_listings_seller_id_fkey(display_name, avatar_url)')
+      .select(select)
       .eq('status', 'published')
       .eq('featured', true)
       .order('created_at', { ascending: false })
       .limit(8);
-    return data || [];
+
+    if (featured?.length) return featured;
+
+    // Fall back to most recent listings
+    const { data: recent } = await client
+      .from('wimc_listings')
+      .select(select)
+      .eq('status', 'published')
+      .order('created_at', { ascending: false })
+      .limit(8);
+
+    return recent || [];
   }
 
   async getCelebrityListings() {
@@ -117,6 +131,7 @@ export class ListingsService {
     photos: string[];
     description?: string;
     price: number;
+    original_price?: number | null;
     featured?: boolean;
   }) {
     const client = this.supabase.getClient();
@@ -141,7 +156,7 @@ export class ListingsService {
         category: submission.category,
         condition: submission.condition,
         price: data.price,
-        original_price: submission.proposed_price,
+        original_price: data.original_price ?? (submission.proposed_price > data.price ? submission.proposed_price : null),
         description: data.description || submission.pro_description || submission.description,
         photos: data.photos,
         status: 'published',
@@ -155,6 +170,15 @@ export class ListingsService {
       .from('wimc_submissions')
       .update({ stage: 'listed', final_price: data.price, updated_at: new Date().toISOString() })
       .eq('id', submissionId);
+
+    // Audit: record the 'listed' transition in submission events
+    await client.from('wimc_submission_events').insert({
+      submission_id: submissionId,
+      actor_id: adminId,
+      message: 'Item listed on marketplace',
+      old_stage: submission.stage,
+      new_stage: 'listed',
+    });
 
     return listing;
   }

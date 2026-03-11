@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 
 interface User {
@@ -38,10 +39,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Auto-logout on 401 (expired token)
+  useEffect(() => {
+    const handler = () => setUser(null);
+    window.addEventListener('wimc:auth-expired', handler);
+    return () => window.removeEventListener('wimc:auth-expired', handler);
+  }, []);
+
   useEffect(() => {
     const token = localStorage.getItem('wimc_token');
     if (token) {
-      refreshUser().finally(() => setLoading(false));
+      // Timeout: if auth check takes >5s (e.g. backend unreachable), stop loading
+      const timeout = setTimeout(() => {
+        setUser(null);
+        setLoading(false);
+      }, 5000);
+      refreshUser().finally(() => {
+        clearTimeout(timeout);
+        setLoading(false);
+      });
     } else {
       setLoading(false);
     }
@@ -75,4 +91,29 @@ export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
+}
+
+export function useRequireAuth(options?: { role?: string | string[]; redirectTo?: string }) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      router.replace(options?.redirectTo || '/auth/login');
+      return;
+    }
+    if (options?.role) {
+      const roles = Array.isArray(options.role) ? options.role : [options.role];
+      if (!roles.includes(user.role)) {
+        router.replace('/');
+      }
+    }
+  }, [user, loading, router, options?.role, options?.redirectTo]);
+
+  const authorized = !loading && !!user && (
+    !options?.role || (Array.isArray(options.role) ? options.role : [options.role]).includes(user.role)
+  );
+
+  return { user, loading, authorized };
 }

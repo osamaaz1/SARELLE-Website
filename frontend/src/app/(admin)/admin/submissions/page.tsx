@@ -8,35 +8,27 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { EmptyState } from '@/components/ui/empty-state';
+import { STAGES } from '@/lib/submission-stages';
 import Image from 'next/image';
-
-const STAGES: Record<string, { label: string; color: string }> = {
-  pending_review: { label: 'Pending Review', color: '#FFBB44' },
-  price_suggested: { label: 'Price Suggested', color: '#88BBFF' },
-  price_accepted: { label: 'Price Accepted', color: '#44DD66' },
-  price_rejected: { label: 'Price Rejected', color: '#FF4444' },
-  pickup_scheduled: { label: 'Pickup Scheduled', color: '#FF8844' },
-  driver_dispatched: { label: 'Driver Dispatched', color: '#AA88FF' },
-  arrived_at_office: { label: 'At Office', color: '#88BBFF' },
-  auth_passed: { label: 'Authenticated', color: '#44DD66' },
-  auth_failed: { label: 'Auth Failed', color: '#FF4444' },
-  photoshoot_done: { label: 'Photoshoot Done', color: '#AA88FF' },
-  listed: { label: 'Listed', color: '#44DD66' },
-  rejected: { label: 'Rejected', color: '#FF4444' },
-};
 
 const TABS = ['all', 'pending_review', 'price_suggested', 'price_accepted', 'pickup_scheduled', 'arrived_at_office', 'auth_passed', 'photoshoot_done'];
 
 export default function AdminSubmissionsPage() {
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('all');
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     const stage = activeTab === 'all' ? undefined : activeTab;
     setLoading(true);
-    api.getAdminSubmissions(stage).then(setSubmissions).catch(() => setSubmissions([])).finally(() => setLoading(false));
-  }, [activeTab]);
+    setError(null);
+    api.getAdminSubmissions(stage)
+      .then(setSubmissions)
+      .catch((err) => { setSubmissions([]); setError(err.message || 'Failed to load submissions'); })
+      .finally(() => setLoading(false));
+  }, [activeTab, retryKey]);
 
   return (
     <div>
@@ -56,7 +48,12 @@ export default function AdminSubmissionsPage() {
         ))}
       </div>
 
-      {loading ? <LoadingSpinner /> : submissions.length === 0 ? (
+      {loading ? <LoadingSpinner /> : error ? (
+        <div className="text-center py-12">
+          <p className="text-wimc-subtle mb-4">{error}</p>
+          <Button onClick={() => setRetryKey(k => k + 1)}>Try Again</Button>
+        </div>
+      ) : submissions.length === 0 ? (
         <EmptyState title="No submissions" description="No submissions match this filter" />
       ) : (
         <div className="space-y-3">

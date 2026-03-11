@@ -145,12 +145,18 @@ export class OffersService {
   async reject(offerId: string, sellerId: string) {
     const offer = await this.getOfferForSeller(offerId, sellerId);
     const client = this.supabase.getClient();
-    const { data } = await client
+
+    // Atomic: reject only if still pending (prevents race with accept)
+    const { data, error } = await client
       .from('wimc_offers')
       .update({ status: 'rejected', updated_at: new Date().toISOString() })
       .eq('id', offerId)
+      .eq('status', 'pending')
       .select()
       .single();
+    if (error || !data) {
+      throw new BadRequestException('Offer is no longer pending');
+    }
 
     // Notify buyer of rejection
     this.sendOfferResponseEmail(offer.buyer_id, offer.listing_id, false, offer.amount)
@@ -186,13 +192,18 @@ export class OffersService {
       .single();
     if (!offer) throw new NotFoundException('Offer not found');
 
-    const { data } = await client
+    // Atomic: withdraw only if still pending
+    const { data: updated, error } = await client
       .from('wimc_offers')
       .update({ status: 'withdrawn', updated_at: new Date().toISOString() })
       .eq('id', offerId)
+      .eq('status', 'pending')
       .select()
       .single();
-    return data;
+    if (error || !updated) {
+      throw new BadRequestException('Offer is no longer pending');
+    }
+    return updated;
   }
 
   private async getOfferForSeller(offerId: string, sellerId: string) {

@@ -2,9 +2,10 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/providers/auth-provider';
 import { Navbar } from '@/components/layout/navbar';
 import { Sidebar } from '@/components/layout/sidebar';
+import { useAuth } from '@/providers/auth-provider';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 const adminLinks = [
   { href: '/admin', label: 'Dashboard', icon: 'dashboard' },
@@ -23,17 +24,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && (!user || user.role !== 'admin')) {
+    if (loading) return;
+    if (!user) {
       router.replace('/auth/login?redirect=/admin');
+    } else if (user.role !== 'admin') {
+      router.replace('/');
     }
   }, [user, loading, router]);
 
-  if (loading || !user || user.role !== 'admin') {
+  if (loading) {
     return (
       <div className="min-h-screen bg-wimc-bg flex items-center justify-center">
-        <div className="text-wimc-muted text-sm">Checking access...</div>
+        <LoadingSpinner />
       </div>
     );
+  }
+
+  if (!user || user.role !== 'admin') {
+    return null;
   }
 
   return (

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { SupabaseModule } from './supabase/supabase.module';
@@ -16,11 +16,13 @@ import { BidsModule } from './bids/bids.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { EmailModule } from './email/email.module';
 import { StorageModule } from './storage/storage.module';
+import { DeveloperModule } from './developer/developer.module';
+import { GlobalExceptionFilter } from './filters/global-exception.filter';
 
 @Module({
   controllers: [AppController],
   imports: [
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }]),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 200 }]),
     SupabaseModule,
     EmailModule,
     AuthModule,
@@ -35,9 +37,11 @@ import { StorageModule } from './storage/storage.module';
     AdminModule,
     GatewayModule,
     StorageModule,
+    DeveloperModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],
 })
 export class AppModule {}

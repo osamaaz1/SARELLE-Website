@@ -1,5 +1,11 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/navbar';
 import { Sidebar } from '@/components/layout/sidebar';
+import { useAuth } from '@/providers/auth-provider';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 const sellerLinks = [
   { href: '/seller/dashboard', label: 'My Products', icon: 'listings' },
@@ -11,6 +17,28 @@ const sellerLinks = [
 ];
 
 export default function SellerLayout({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      router.replace('/auth/login');
+    }
+  }, [user, loading, router]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-wimc-bg flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-wimc-bg">
       <Navbar />

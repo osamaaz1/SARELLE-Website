@@ -22,23 +22,27 @@ const MOCK_USERS: Record<string, { password: string; profile: any }> = {
   },
   'sara@test.wimc.com': {
     password: 'Seller123!',
-    profile: { id: 'mock-user-seller', email: 'sara@test.wimc.com', display_name: 'Sara Ahmed', role: 'seller', avatar_url: null, points: 1200, tier: 'Silver' },
+    profile: { id: 'mock-user-seller', email: 'sara@test.wimc.com', display_name: 'Sara Ahmed', role: 'customer', avatar_url: null, points: 1200, tier: 'Silver' },
   },
   'nadia@test.wimc.com': {
     password: 'Seller123!',
-    profile: { id: 'mock-user-nadia', email: 'nadia@test.wimc.com', display_name: 'Nadia El-Sayed', role: 'seller', avatar_url: null, points: 350, tier: 'Bronze' },
+    profile: { id: 'mock-user-nadia', email: 'nadia@test.wimc.com', display_name: 'Nadia El-Sayed', role: 'customer', avatar_url: null, points: 350, tier: 'Bronze' },
   },
   'reem@test.wimc.com': {
     password: 'Buyer123!',
-    profile: { id: 'mock-user-reem', email: 'reem@test.wimc.com', display_name: 'Reem Mostafa', role: 'buyer', avatar_url: null, points: 150, tier: 'Bronze' },
+    profile: { id: 'mock-user-reem', email: 'reem@test.wimc.com', display_name: 'Reem Mostafa', role: 'customer', avatar_url: null, points: 150, tier: 'Bronze' },
   },
   'yasmine@test.wimc.com': {
     password: 'Celeb123!',
-    profile: { id: 'mock-user-celeb', email: 'yasmine@test.wimc.com', display_name: 'Yasmine Sabri', role: 'vip_seller', avatar_url: null, points: 6000, tier: 'Platinum' },
+    profile: { id: 'mock-user-celeb', email: 'yasmine@test.wimc.com', display_name: 'Yasmine Sabri', role: 'celebrity', avatar_url: null, points: 6000, tier: 'Platinum' },
   },
   'buyer@test.wimc.com': {
     password: 'Buyer123!',
-    profile: { id: 'mock-user-buyer', email: 'buyer@test.wimc.com', display_name: 'Bea Buyer', role: 'buyer', avatar_url: null, points: 50, tier: 'Bronze' },
+    profile: { id: 'mock-user-buyer', email: 'buyer@test.wimc.com', display_name: 'Bea Buyer', role: 'customer', avatar_url: null, points: 50, tier: 'Bronze' },
+  },
+  'dev@whatinmycloset.com': {
+    password: 'Dev123!',
+    profile: { id: 'mock-user-dev', email: 'dev@whatinmycloset.com', display_name: 'WIMC Developer', role: 'developer', avatar_url: null, points: 0, tier: 'Gold' },
   },
 };
 
@@ -84,6 +88,17 @@ class ApiClient {
     });
 
     if (!res.ok) {
+      if (res.status === 401 && token) {
+        // Token was set but server rejected it — expired session
+        this.clearToken();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('wimc:auth-expired'));
+        }
+        throw new Error('Session expired');
+      }
+      if (res.status === 429) {
+        throw new Error('Too many requests. Please wait a moment and try again.');
+      }
       const error = await res.json().catch(() => ({ message: res.statusText }));
       throw new Error(error.message || `API Error: ${res.status}`);
     }
@@ -202,6 +217,34 @@ class ApiClient {
 
   async rejectPrice(submissionId: string) {
     return this.request<any>(`/submissions/${submissionId}/reject-price`, { method: 'POST' });
+  }
+
+  async proposePickup(submissionId: string, data: {
+    pickup_date: string;
+    pickup_time_from: string;
+    pickup_time_to: string;
+    pickup_address: string;
+    driver_phone: string;
+    whatsapp_number: string;
+    google_maps_link?: string;
+  }) {
+    return this.request<any>(`/submissions/${submissionId}/propose-pickup`, { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async acceptAdminPickupTime(submissionId: string) {
+    return this.request<any>(`/submissions/${submissionId}/accept-admin-time`, { method: 'POST' });
+  }
+
+  async counterPickup(submissionId: string, data: {
+    pickup_date: string;
+    pickup_time_from: string;
+    pickup_time_to: string;
+    pickup_address: string;
+    driver_phone: string;
+    whatsapp_number: string;
+    google_maps_link?: string;
+  }) {
+    return this.request<any>(`/submissions/${submissionId}/counter-pickup`, { method: 'POST', body: JSON.stringify(data) });
   }
 
   // Offers
@@ -323,8 +366,14 @@ class ApiClient {
     return this.request<any>(`/admin/submissions/${id}/review`, { method: 'PATCH', body: JSON.stringify(data) });
   }
 
-  async schedulePickup(data: any) {
-    return this.request<any>('/admin/pickups', { method: 'POST', body: JSON.stringify(data) });
+  async respondToPickup(submissionId: string, data: {
+    action: 'accept' | 'reject' | 'cancel';
+    admin_suggested_date?: string;
+    admin_suggested_time_from?: string;
+    admin_suggested_time_to?: string;
+    admin_pickup_notes?: string;
+  }) {
+    return this.request<any>(`/admin/pickups/${submissionId}/respond`, { method: 'POST', body: JSON.stringify(data) });
   }
 
   async dispatchDriver(submissionId: string) {
@@ -339,7 +388,11 @@ class ApiClient {
     return this.request<any>('/admin/qc-reports', { method: 'POST', body: JSON.stringify(data) });
   }
 
-  async createListing(data: { submission_id: string; photos: string[]; description?: string; price: number; featured?: boolean }) {
+  async markPhotoshootDone(submissionId: string, data?: { pro_photos?: string[]; pro_description?: string }) {
+    return this.request<any>(`/admin/submissions/${submissionId}/photoshoot`, { method: 'PATCH', body: JSON.stringify(data || {}) });
+  }
+
+  async createListing(data: { submission_id: string; photos: string[]; description?: string; price: number; original_price?: number | null; featured?: boolean }) {
     return this.request<any>('/admin/listings', { method: 'POST', body: JSON.stringify(data) });
   }
 
@@ -435,6 +488,117 @@ class ApiClient {
       method: 'POST',
       body: formData,
     });
+  }
+
+  // Developer
+  async getDeveloperDashboard() {
+    if (USE_MOCK) {
+      return {
+        total_users: Object.keys(MOCK_USERS).length,
+        users_by_role: { customer: 5, celebrity: 1, admin: 1, developer: 1 },
+        total_errors: 3,
+        total_audit_entries: 12,
+        uptime: 86400,
+      };
+    }
+    return this.request<any>('/developer/dashboard');
+  }
+
+  async getDeveloperUsers(params: Record<string, string> = {}) {
+    if (USE_MOCK) {
+      const users = Object.values(MOCK_USERS).map(u => ({
+        ...u.profile,
+        created_at: '2025-01-15T10:00:00Z',
+        disabled_at: null,
+      }));
+      return { users, total: users.length, page: 1, totalPages: 1 };
+    }
+    const query = new URLSearchParams(params).toString();
+    return this.request<any>(`/developer/users${query ? `?${query}` : ''}`);
+  }
+
+  async changeUserRole(userId: string, role: string) {
+    if (USE_MOCK) return { success: true, old_role: 'customer', new_role: role };
+    return this.request<any>(`/developer/users/${userId}/role`, { method: 'PATCH', body: JSON.stringify({ role }) });
+  }
+
+  async toggleUserDisable(userId: string, disable: boolean) {
+    if (USE_MOCK) return { success: true, disabled: disable };
+    return this.request<any>(`/developer/users/${userId}/disable`, { method: 'PATCH', body: JSON.stringify({ disable }) });
+  }
+
+  async getAuditLogs(params: Record<string, string> = {}) {
+    if (USE_MOCK) {
+      return {
+        logs: [
+          { id: '1', entity_type: 'submission', action: 'admin_review', actor_id: 'mock-user-admin', actor_name: 'WIMC Admin', entity_id: 'sub-1', old_values: null, new_values: { action: 'approve' }, created_at: '2025-03-10T14:00:00Z', metadata: {} },
+          { id: '2', entity_type: 'user', action: 'role_change', actor_id: 'mock-user-dev', actor_name: 'WIMC Developer', entity_id: 'mock-user-reem', old_values: { role: 'customer' }, new_values: { role: 'celebrity' }, created_at: '2025-03-09T10:30:00Z', metadata: {} },
+        ],
+        total: 2, page: 1, totalPages: 1,
+      };
+    }
+    const query = new URLSearchParams(params).toString();
+    return this.request<any>(`/developer/audit-logs${query ? `?${query}` : ''}`);
+  }
+
+  async getErrorLogs(params: Record<string, string> = {}) {
+    if (USE_MOCK) {
+      return {
+        errors: [
+          { id: 'err-1', error_type: 'InternalServerErrorException', message: 'Database connection timeout', endpoint: 'GET /api/listings', http_status: 500, created_at: '2025-03-10T16:00:00Z' },
+          { id: 'err-2', error_type: 'TypeError', message: 'Cannot read properties of null', endpoint: 'POST /api/orders', http_status: 500, created_at: '2025-03-09T12:00:00Z' },
+        ],
+        total: 2, page: 1, totalPages: 1,
+      };
+    }
+    const query = new URLSearchParams(params).toString();
+    return this.request<any>(`/developer/error-logs${query ? `?${query}` : ''}`);
+  }
+
+  async getErrorLog(id: string) {
+    if (USE_MOCK) {
+      return {
+        id, error_type: 'InternalServerErrorException', message: 'Database connection timeout',
+        stack_trace: 'Error: Database connection timeout\n    at SupabaseService.query (/app/src/supabase/supabase.service.ts:45:11)\n    at ListingsService.getAll (/app/src/listings/listings.service.ts:23:20)\n    at ListingsController.browse (/app/src/listings/listings.controller.ts:15:24)',
+        endpoint: 'GET /api/listings', http_status: 500, user_id: null,
+        request_body: null, metadata: { ip: '127.0.0.1', user_agent: 'Mozilla/5.0' }, created_at: '2025-03-10T16:00:00Z',
+      };
+    }
+    return this.request<any>(`/developer/error-logs/${id}`);
+  }
+
+  async getActiveSessions() {
+    if (USE_MOCK) {
+      return Object.values(MOCK_USERS).map(u => ({
+        id: u.profile.id,
+        email: u.profile.email,
+        display_name: u.profile.display_name,
+        role: u.profile.role,
+        last_sign_in_at: new Date(Date.now() - Math.random() * 86400000).toISOString(),
+        created_at: '2025-01-15T10:00:00Z',
+      }));
+    }
+    return this.request<any>('/developer/sessions');
+  }
+
+  async forceLogoutUser(userId: string) {
+    if (USE_MOCK) return { success: true };
+    return this.request<any>(`/developer/sessions/${userId}/force-logout`, { method: 'POST' });
+  }
+
+  async getApiOverview() {
+    if (USE_MOCK) {
+      return {
+        cors_origins: ['http://localhost:3000'],
+        rate_limit: { ttl_ms: 60000, limit: 60 },
+        supabase: { url_configured: true, anon_key_configured: true, service_key_configured: true },
+        commission_rates: { bronze: 20, silver: 18, gold: 15, platinum: 12 },
+        uptime_seconds: 86400,
+        node_version: 'v20.11.0',
+        environment: 'development',
+      };
+    }
+    return this.request<any>('/developer/api-overview');
   }
 }
 

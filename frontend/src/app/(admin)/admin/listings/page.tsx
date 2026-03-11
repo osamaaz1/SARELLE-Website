@@ -19,10 +19,16 @@ export default function AdminListingsPage() {
   const [readyItems, setReadyItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [publishModal, setPublishModal] = useState<any>(null);
-  const [listingForm, setListingForm] = useState({ price: '', description: '', featured: false });
+  const [listingForm, setListingForm] = useState({ price: '', original_price: '', description: '', featured: false });
   const [proPhotoFiles, setProPhotoFiles] = useState<File[]>([]);
   const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+
+  // Photoshoot modal state
+  const [photoshootModal, setPhotoshootModal] = useState<any>(null);
+  const [photoshootFiles, setPhotoshootFiles] = useState<File[]>([]);
+  const [photoshootDesc, setPhotoshootDesc] = useState('');
+  const [photoshootUploading, setPhotoshootUploading] = useState(false);
 
   const fetchData = () => {
     setLoading(true);
@@ -33,10 +39,43 @@ export default function AdminListingsPage() {
   };
   useEffect(() => { fetchData(); }, []);
 
+  const openPhotoshootModal = (sub: any) => {
+    setPhotoshootModal(sub);
+    setPhotoshootFiles([]);
+    setPhotoshootDesc('');
+  };
+
+  const handlePhotoshootDone = async () => {
+    if (photoshootFiles.length === 0) {
+      addToast('error', 'Please upload at least one professional photo');
+      return;
+    }
+    setPhotoshootUploading(true);
+    try {
+      // Upload photos first
+      const { urls } = await api.uploadListingPhotos(photoshootModal.id, photoshootFiles);
+      // Then mark photoshoot done with the URLs
+      await api.markPhotoshootDone(photoshootModal.id, {
+        pro_photos: urls,
+        pro_description: photoshootDesc || undefined,
+      });
+      addToast('success', 'Photoshoot completed with photos uploaded');
+      setPhotoshootModal(null);
+      // Optimistic: update local stage
+      setReadyItems(prev => prev.map(s =>
+        s.id === photoshootModal.id ? { ...s, stage: 'photoshoot_done', pro_photos: urls } : s
+      ));
+    } catch (err: any) {
+      addToast('error', err.message);
+    } finally {
+      setPhotoshootUploading(false);
+    }
+  };
+
   const openPublishModal = (sub: any) => {
     setPublishModal(sub);
-    setListingForm({ price: sub.proposed_price?.toString() || '', description: '', featured: false });
-    setExistingPhotos(sub.pro_photos?.length > 0 ? sub.pro_photos : sub.user_photos || []);
+    setListingForm({ price: sub.proposed_price?.toString() || '', original_price: '', description: '', featured: false });
+    setExistingPhotos(sub.pro_photos?.length > 0 ? sub.pro_photos : []);
     setProPhotoFiles([]);
   };
 
@@ -54,11 +93,17 @@ export default function AdminListingsPage() {
 
       const allPhotos = [...existingPhotos, ...newPhotoUrls];
 
+      if (allPhotos.length === 0) {
+        addToast('error', 'At least one professional photo is required for the listing');
+        return;
+      }
+
       await api.createListing({
         submission_id: publishModal.id,
-        photos: allPhotos.length > 0 ? allPhotos : publishModal.user_photos || [],
-        description: listingForm.description || publishModal.description,
+        photos: allPhotos,
+        description: listingForm.description || publishModal.pro_description || publishModal.description,
         price: parseFloat(listingForm.price),
+        original_price: listingForm.original_price ? parseFloat(listingForm.original_price) : null,
         featured: listingForm.featured,
       });
       addToast('success', 'Item published!');
@@ -87,9 +132,15 @@ export default function AdminListingsPage() {
                 <p className="text-xs text-wimc-subtle">{sub.brand} &middot; Proposed: {formatPrice(sub.proposed_price)}</p>
               </div>
               <Badge color={sub.stage === 'auth_passed' ? '#44DD66' : '#AA88FF'}>{sub.stage.replace(/_/g, ' ')}</Badge>
-              <Button size="sm" onClick={() => openPublishModal(sub)}>
-                Publish
-              </Button>
+              {sub.stage === 'auth_passed' ? (
+                <Button size="sm" variant="outline" onClick={() => openPhotoshootModal(sub)}>
+                  Upload Pro Photos
+                </Button>
+              ) : (
+                <Button size="sm" onClick={() => openPublishModal(sub)}>
+                  Publish
+                </Button>
+              )}
             </Card>
           ))}
         </div>
@@ -98,7 +149,7 @@ export default function AdminListingsPage() {
       <Modal open={!!publishModal} onClose={() => setPublishModal(null)} title="Publish Listing">
         <div className="space-y-4">
           <div>
-            <label className="text-sm text-wimc-muted mb-2 block">Professional Photos</label>
+            <label className="text-sm text-wimc-muted mb-2 block">Listing Photos (professional photos only — these will appear on the marketplace)</label>
             <PhotoUploader
               files={proPhotoFiles}
               onFilesChange={setProPhotoFiles}
@@ -109,9 +160,10 @@ export default function AdminListingsPage() {
             />
           </div>
           <Input label={`Final Price (${CURRENCY_SYMBOL})`} type="number" value={listingForm.price} onChange={(e) => setListingForm({ ...listingForm, price: e.target.value })} />
+          <Input label={`Original Price (${CURRENCY_SYMBOL}) — leave empty for no discount`} type="number" value={listingForm.original_price} onChange={(e) => setListingForm({ ...listingForm, original_price: e.target.value })} placeholder="Only fill if you want to show a discount" />
           <div className="space-y-1.5">
             <label className="text-sm text-wimc-muted">Description (optional override)</label>
-            <textarea value={listingForm.description} onChange={(e) => setListingForm({ ...listingForm, description: e.target.value })} rows={3} placeholder="Override item description..." className="w-full bg-wimc-surface border border-wimc-border rounded-lg px-4 py-2.5 text-white placeholder:text-wimc-subtle focus:outline-none focus:border-wimc-border-alt resize-none" />
+            <textarea value={listingForm.description} onChange={(e) => setListingForm({ ...listingForm, description: e.target.value })} rows={3} placeholder="Override item description..." className="w-full bg-wimc-surface border border-wimc-border rounded-lg px-4 py-2.5 text-[16px] leading-normal text-white placeholder:text-wimc-subtle focus:outline-none focus:border-wimc-border-alt resize-none" />
           </div>
           <label className="flex items-center gap-2 text-sm text-wimc-muted cursor-pointer">
             <input type="checkbox" checked={listingForm.featured} onChange={(e) => setListingForm({ ...listingForm, featured: e.target.checked })} className="rounded" />
@@ -121,6 +173,40 @@ export default function AdminListingsPage() {
             <Button variant="ghost" onClick={() => setPublishModal(null)}>Cancel</Button>
             <Button onClick={handlePublish} loading={uploading}>
               {uploading ? 'Uploading...' : 'Publish to Marketplace'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Photoshoot Upload Modal */}
+      <Modal open={!!photoshootModal} onClose={() => !photoshootUploading && setPhotoshootModal(null)} title="Upload Professional Photos">
+        <div className="space-y-4">
+          <p className="text-sm text-wimc-subtle">
+            Upload the professional photos for <strong className="text-white">{photoshootModal?.name}</strong>. These will be the photos shown on the marketplace listing (customer photos will not be displayed).
+          </p>
+          <div>
+            <label className="text-sm text-wimc-muted mb-2 block">Professional Photos *</label>
+            <PhotoUploader
+              files={photoshootFiles}
+              onFilesChange={setPhotoshootFiles}
+              maxPhotos={12}
+              uploading={photoshootUploading}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm text-wimc-muted">Professional Description (optional)</label>
+            <textarea
+              value={photoshootDesc}
+              onChange={(e) => setPhotoshootDesc(e.target.value)}
+              rows={3}
+              placeholder="Professional description to replace the seller's original..."
+              className="w-full bg-wimc-surface border border-wimc-border rounded-lg px-4 py-2.5 text-[16px] leading-normal text-white placeholder:text-wimc-subtle focus:outline-none focus:border-wimc-border-alt resize-none"
+            />
+          </div>
+          <div className="flex gap-3 justify-end">
+            <Button variant="ghost" onClick={() => setPhotoshootModal(null)} disabled={photoshootUploading}>Cancel</Button>
+            <Button onClick={handlePhotoshootDone} loading={photoshootUploading}>
+              {photoshootUploading ? 'Uploading...' : 'Complete Photoshoot'}
             </Button>
           </div>
         </div>

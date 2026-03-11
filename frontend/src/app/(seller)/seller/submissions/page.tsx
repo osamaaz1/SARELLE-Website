@@ -7,33 +7,37 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/currency';
+import { STAGES } from '@/lib/submission-stages';
 import Image from 'next/image';
-
-const STAGES: Record<string, { label: string; color: string }> = {
-  pending_review: { label: 'Pending Review', color: '#FFBB44' },
-  price_suggested: { label: 'Price Suggested', color: '#88BBFF' },
-  price_accepted: { label: 'Price Accepted', color: '#44DD66' },
-  price_rejected: { label: 'Price Rejected', color: '#FF4444' },
-  pickup_scheduled: { label: 'Pickup Scheduled', color: '#FF8844' },
-  driver_dispatched: { label: 'Driver Dispatched', color: '#AA88FF' },
-  arrived_at_office: { label: 'At Office', color: '#88BBFF' },
-  auth_passed: { label: 'Authenticated', color: '#44DD66' },
-  auth_failed: { label: 'Auth Failed', color: '#FF4444' },
-  photoshoot_done: { label: 'Photoshoot Done', color: '#AA88FF' },
-  listed: { label: 'Listed', color: '#44DD66' },
-  rejected: { label: 'Rejected', color: '#FF4444' },
-};
 
 export default function SellerSubmissionsPage() {
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    api.getSubmissions().then(setSubmissions).catch(() => {}).finally(() => setLoading(false));
-  }, []);
+  const fetchData = () => {
+    setError(null);
+    setLoading(true);
+    api.getSubmissions()
+      .then(setSubmissions)
+      .catch((err) => setError(err.message || 'Something went wrong'))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchData(); }, []);
 
   if (loading) return <LoadingSpinner />;
+
+  if (error) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-wimc-subtle mb-4">{error}</p>
+        <Button onClick={fetchData}>Try Again</Button>
+      </div>
+    );
+  }
 
   return (
     <div>

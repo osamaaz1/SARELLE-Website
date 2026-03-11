@@ -68,7 +68,7 @@ export function ProductCard({ id, name, brand, price, photos, condition, categor
               LIVE AUCTION
             </div>
           )}
-          {!isAuctionItem && originalPrice && (
+          {!isAuctionItem && originalPrice && discount > 0 && (
             <div className="absolute bottom-2 left-2 bg-wimc-red text-white px-3 py-1.5 text-[10px] font-bold rounded">
               PRICE DROP
             </div>
@@ -79,10 +79,10 @@ export function ProductCard({ id, name, brand, price, photos, condition, categor
           <p className="text-[10px] sm:text-[11px] font-bold tracking-[2px] text-wimc-dim mb-1">{brand}</p>
           <p className="text-[13px] sm:text-[14px] font-medium leading-[1.3] line-clamp-2 mb-1.5">{name}</p>
           <div className="flex gap-1.5 items-baseline">
-            {!isAuctionItem && originalPrice && (
+            {!isAuctionItem && originalPrice && discount > 0 && (
               <span className="text-[11px] sm:text-[12px] text-[#444] line-through">{formatPrice(originalPrice)}</span>
             )}
-            <span className={`text-[15px] sm:text-[16px] font-bold ${!isAuctionItem && originalPrice ? 'text-wimc-red' : 'text-white'}`}>
+            <span className={`text-[15px] sm:text-[16px] font-bold ${!isAuctionItem && originalPrice && discount > 0 ? 'text-wimc-red' : 'text-white'}`}>
               {isAuctionItem && displayPrice > 0 ? formatPrice(displayPrice) : formatPrice(price)}
             </span>
             {!isAuctionItem && originalPrice && discount > 0 && (

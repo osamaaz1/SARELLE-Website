@@ -66,6 +66,14 @@ export class PayoutsService {
       .single();
     if (error) throw new BadRequestException(error.message);
 
+    // Audit event: payout created
+    await client.from('wimc_payout_events').insert({
+      payout_id: payout.id,
+      from_status: null,
+      to_status: 'pending',
+      changed_by: adminId,
+    });
+
     // Update order status
     await client.from('wimc_orders').update({ status: 'completed', updated_at: new Date().toISOString() }).eq('id', orderId);
 
@@ -93,8 +101,17 @@ export class PayoutsService {
     return data || [];
   }
 
-  async updateStatus(payoutId: string, status: string) {
+  async updateStatus(payoutId: string, status: string, adminId: string) {
     const client = this.supabase.getClient();
+
+    // Read current status for audit trail
+    const { data: current } = await client
+      .from('wimc_payouts')
+      .select('status')
+      .eq('id', payoutId)
+      .single();
+    if (!current) throw new NotFoundException('Payout not found');
+
     const updates: Record<string, any> = { status, updated_at: new Date().toISOString() };
     if (status === 'sent') updates.sent_at = new Date().toISOString();
     const { data, error } = await client
@@ -104,6 +121,15 @@ export class PayoutsService {
       .select()
       .single();
     if (error) throw new BadRequestException(error.message);
+
+    // Audit event: status change
+    await client.from('wimc_payout_events').insert({
+      payout_id: payoutId,
+      from_status: current.status,
+      to_status: status,
+      changed_by: adminId,
+    });
+
     return data;
   }
 }

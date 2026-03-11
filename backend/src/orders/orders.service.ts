@@ -158,7 +158,7 @@ export class OrdersService {
 
   async listByUser(userId: string, role: string) {
     const client = this.supabase.getClient();
-    const column = role === 'seller' || role === 'vip_seller' ? 'seller_id' : 'buyer_id';
+    const column = role === 'celebrity' ? 'seller_id' : 'buyer_id';
     const { data } = await client
       .from('wimc_orders')
       .select('*, wimc_listings(id, name, brand, photos)')

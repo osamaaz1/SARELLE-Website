@@ -12,8 +12,8 @@ export class RegisterDto {
   password: string;
 
   @IsOptional()
-  @IsIn(['buyer', 'seller'])
-  role?: 'buyer' | 'seller' = 'buyer';
+  @IsIn(['customer'])
+  role?: 'customer' = 'customer';
 
   @IsString()
   @MinLength(2)

@@ -1,16 +1,20 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, UseInterceptors, Req } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { SubmissionsService } from '../submissions/submissions.service';
+import { RespondToPickupDto } from '../submissions/dto/pickup.dto';
 import { ListingsService } from '../listings/listings.service';
 import { OrdersService } from '../orders/orders.service';
 import { PayoutsService } from '../payouts/payouts.service';
 import { BidsService } from '../bids/bids.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Roles, RolesGuard } from '../auth/guards/roles.guard';
+import { AuditLogInterceptor } from '../interceptors/audit-log.interceptor';
+import { Audit } from '../decorators/audit.decorator';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
+@UseInterceptors(AuditLogInterceptor)
 export class AdminController {
   constructor(
     private readonly adminService: AdminService,
@@ -41,6 +45,7 @@ export class AdminController {
     return this.submissionsService.getById(id, undefined, true);
   }
 
+  @Audit('submission', 'admin_review')
   @Patch('submissions/:id/review')
   async reviewSubmission(
     @Param('id') id: string,
@@ -51,16 +56,10 @@ export class AdminController {
   }
 
   // === Pickups ===
-  @Post('pickups')
-  async schedulePickup(@Req() req: any, @Body() body: {
-    submission_id: string;
-    pickup_date: string;
-    pickup_time: string;
-    pickup_address: string;
-    driver_phone: string;
-    google_maps_link?: string;
-  }) {
-    return this.submissionsService.schedulePickup(body.submission_id, req.user.id, body);
+  @Audit('submission', 'pickup_respond')
+  @Post('pickups/:id/respond')
+  async respondToPickup(@Param('id') id: string, @Req() req: any, @Body() body: RespondToPickupDto) {
+    return this.submissionsService.respondToPickup(id, req.user.id, body.action, body);
   }
 
   @Patch('pickups/:id/dispatch')
@@ -74,18 +73,31 @@ export class AdminController {
   }
 
   // === QC ===
+  @Audit('submission', 'qc_report')
   @Post('qc-reports')
   async qcReport(@Req() req: any, @Body() body: { submission_id: string; passed: boolean; notes?: string }) {
     return this.submissionsService.qcResult(body.submission_id, req.user.id, body.passed, body.notes);
   }
 
+  // === Photoshoot ===
+  @Patch('submissions/:id/photoshoot')
+  async photoshootDone(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Body() body: { pro_photos?: string[]; pro_description?: string },
+  ) {
+    return this.submissionsService.photoshootDone(id, req.user.id, body.pro_photos || [], body.pro_description);
+  }
+
   // === Listings ===
+  @Audit('listing', 'create')
   @Post('listings')
   async createListing(@Req() req: any, @Body() body: {
     submission_id: string;
     photos: string[];
     description?: string;
     price: number;
+    original_price?: number | null;
     featured?: boolean;
   }) {
     return this.listingsService.createFromSubmission(body.submission_id, req.user.id, body);
@@ -97,6 +109,7 @@ export class AdminController {
   }
 
   // === Orders ===
+  @Audit('order', 'status_update')
   @Patch('orders/:id/status')
   async updateOrderStatus(
     @Param('id') id: string,
@@ -117,9 +130,10 @@ export class AdminController {
     return this.payoutsService.trigger(orderId, req.user.id);
   }
 
+  @Audit('payout', 'status_update')
   @Patch('payouts/:id/status')
-  async updatePayoutStatus(@Param('id') id: string, @Body() body: { status: string }) {
-    return this.payoutsService.updateStatus(id, body.status);
+  async updatePayoutStatus(@Param('id') id: string, @Req() req: any, @Body() body: { status: string }) {
+    return this.payoutsService.updateStatus(id, body.status, req.user.id);
   }
 
   // === Sellers ===

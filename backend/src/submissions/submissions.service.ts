@@ -14,8 +14,8 @@ export class SubmissionsService {
   ) {}
 
   /**
-   * Auto-upgrades a buyer to seller and creates seller_profile if needed.
-   * This allows any registered user to submit items without pre-selecting a role.
+   * Ensures a seller_profile row exists for the user so they can submit items.
+   * Any customer can sell — no role change is needed.
    */
   async ensureSellerProfile(userId: string) {
     const client = this.supabase.getClient();
@@ -29,14 +29,10 @@ export class SubmissionsService {
 
     if (!profile) throw new BadRequestException('Profile not found');
 
-    // Already a seller or vip_seller — nothing to do
-    if (profile.role === 'seller' || profile.role === 'vip_seller' || profile.role === 'admin') return;
+    // Already has a role that can sell — nothing to upgrade
+    if (profile.role === 'admin' || profile.role === 'celebrity') return;
 
-    // Upgrade buyer → seller
-    await client
-      .from('wimc_profiles')
-      .update({ role: 'seller' })
-      .eq('id', userId);
+    // Customer role stays as customer — seller profile is what matters
 
     // Create seller profile row if missing
     const { data: existing } = await client
@@ -49,7 +45,7 @@ export class SubmissionsService {
       await client.from('wimc_seller_profiles').insert({ user_id: userId });
     }
 
-    this.logger.log(`User ${userId} auto-upgraded to seller`);
+    this.logger.log(`Seller profile created for user ${userId}`);
   }
 
   async create(sellerId: string, data: {
@@ -90,7 +86,7 @@ export class SubmissionsService {
     const client = this.supabase.getClient();
     let query = client
       .from('wimc_submissions')
-      .select('id, seller_id, brand, name, category, condition, color, stage, proposed_price, final_price, created_at, updated_at')
+      .select('id, seller_id, brand, name, category, condition, color, stage, proposed_price, final_price, user_photos, created_at, updated_at')
       .eq('seller_id', sellerId)
       .order('created_at', { ascending: false });
 
@@ -104,13 +100,18 @@ export class SubmissionsService {
     const client = this.supabase.getClient();
     let query = client
       .from('wimc_submissions')
-      .select('id, seller_id, brand, name, category, condition, color, stage, proposed_price, final_price, created_at, updated_at')
+      .select('id, seller_id, brand, name, category, condition, color, stage, proposed_price, final_price, user_photos, pickup_date, pickup_time_from, pickup_time_to, pickup_address, driver_phone, whatsapp_number, google_maps_link, admin_suggested_date, admin_suggested_time_from, admin_suggested_time_to, admin_pickup_notes, created_at, updated_at, wimc_profiles!seller_id(display_name)')
       .order('created_at', { ascending: false });
 
     if (stage) query = query.eq('stage', stage);
     const { data, error } = await query;
     if (error) throw new BadRequestException(error.message);
-    return data || [];
+    // Flatten the joined profile data
+    return (data || []).map((item: any) => ({
+      ...item,
+      seller_name: item.wimc_profiles?.display_name || null,
+      wimc_profiles: undefined,
+    }));
   }
 
   async getById(id: string, userId?: string, isAdmin = false) {
@@ -162,71 +163,145 @@ export class SubmissionsService {
     rejection_reason?: string;
     admin_notes?: string;
   }) {
-    const client = this.supabase.getClient();
-    const submission = await this.getById(id, undefined, true);
-
-    if (submission.stage !== 'pending_review') {
-      throw new BadRequestException('Submission not in pending_review stage');
-    }
-
     if (action === 'approve') {
       if (!data.proposed_price) throw new BadRequestException('Price required for approval');
-      const { error } = await client
-        .from('wimc_submissions')
-        .update({
-          stage: 'price_suggested',
-          proposed_price: data.proposed_price,
-          admin_notes: data.admin_notes,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id);
-      if (error) throw new BadRequestException(error.message);
-      await this.addEvent(id, adminId, `Price proposed: $${data.proposed_price}`, submission.stage, 'price_suggested');
+      const result = await this.updateStage(
+        id, adminId, 'pending_review', 'price_suggested',
+        `Price proposed: $${data.proposed_price}`,
+        { proposed_price: data.proposed_price, admin_notes: data.admin_notes },
+      );
 
       // Notify seller of price suggestion
+      const submission = await this.getById(id, undefined, true);
       this.getEmailForUser(submission.seller_id).then(email => {
         if (email) this.emailService.sendPriceSuggested(email, submission.name, data.proposed_price!);
       }).catch(e => this.logger.error('Email error', e));
-    } else {
-      const { error } = await client
-        .from('wimc_submissions')
-        .update({
-          stage: 'rejected',
-          rejection_reason: data.rejection_reason,
-          admin_notes: data.admin_notes,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id);
-      if (error) throw new BadRequestException(error.message);
-      await this.addEvent(id, adminId, `Rejected: ${data.rejection_reason}`, submission.stage, 'rejected');
-    }
 
-    return this.getById(id, undefined, true);
+      return result;
+    } else {
+      return this.updateStage(
+        id, adminId, 'pending_review', 'rejected',
+        `Rejected: ${data.rejection_reason}`,
+        { rejection_reason: data.rejection_reason, admin_notes: data.admin_notes },
+      );
+    }
   }
 
-  async schedulePickup(id: string, adminId: string, data: {
+  async proposePickup(id: string, sellerId: string, data: {
     pickup_date: string;
-    pickup_time: string;
+    pickup_time_from: string;
+    pickup_time_to: string;
     pickup_address: string;
     driver_phone: string;
+    whatsapp_number: string;
     google_maps_link?: string;
   }) {
-    const client = this.supabase.getClient();
-    const { error } = await client
-      .from('wimc_submissions')
-      .update({
-        ...data,
-        stage: 'pickup_scheduled',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id);
-    if (error) throw new BadRequestException(error.message);
-    await this.addEvent(id, adminId, 'Pickup scheduled', 'price_accepted', 'pickup_scheduled');
-    return this.getById(id, undefined, true);
+    const submission = await this.getById(id, sellerId);
+    if (submission.stage !== 'price_accepted' && submission.stage !== 'pickup_counter') {
+      throw new BadRequestException('Cannot propose pickup at this stage');
+    }
+    return this.updateStage(
+      id, sellerId, submission.stage, 'pickup_proposed', 'Customer proposed pickup time',
+      {
+        pickup_date: data.pickup_date,
+        pickup_time_from: data.pickup_time_from,
+        pickup_time_to: data.pickup_time_to,
+        pickup_address: data.pickup_address,
+        driver_phone: data.driver_phone,
+        whatsapp_number: data.whatsapp_number,
+        google_maps_link: data.google_maps_link || null,
+      },
+    );
+  }
+
+  async respondToPickup(id: string, adminId: string, action: 'accept' | 'reject' | 'cancel', data?: {
+    admin_suggested_date?: string;
+    admin_suggested_time_from?: string;
+    admin_suggested_time_to?: string;
+    admin_pickup_notes?: string;
+  }) {
+    const submission = await this.getById(id, undefined, true);
+
+    if (action === 'accept') {
+      if (submission.stage !== 'pickup_proposed') {
+        throw new BadRequestException('No pickup proposal to accept');
+      }
+      return this.updateStage(id, adminId, 'pickup_proposed', 'pickup_confirmed', 'Admin confirmed pickup');
+    }
+
+    if (action === 'reject') {
+      if (submission.stage !== 'pickup_proposed') {
+        throw new BadRequestException('No pickup proposal to reject');
+      }
+      if (!data?.admin_suggested_date || !data?.admin_suggested_time_from || !data?.admin_suggested_time_to) {
+        throw new BadRequestException('Must suggest an alternative date and time range');
+      }
+      return this.updateStage(
+        id, adminId, 'pickup_proposed', 'pickup_counter',
+        `Admin suggested different time: ${data.admin_suggested_date} ${data.admin_suggested_time_from}-${data.admin_suggested_time_to}`,
+        {
+          admin_suggested_date: data.admin_suggested_date,
+          admin_suggested_time_from: data.admin_suggested_time_from,
+          admin_suggested_time_to: data.admin_suggested_time_to,
+          admin_pickup_notes: data.admin_pickup_notes || null,
+        },
+      );
+    }
+
+    if (action === 'cancel') {
+      if (submission.stage !== 'pickup_proposed' && submission.stage !== 'pickup_counter') {
+        throw new BadRequestException('No active pickup negotiation to cancel');
+      }
+      return this.updateStage(id, adminId, submission.stage, 'pickup_cancelled', 'Pickup cancelled by admin');
+    }
+
+    throw new BadRequestException('Invalid action');
+  }
+
+  async acceptAdminPickupTime(id: string, sellerId: string) {
+    const submission = await this.getById(id, sellerId);
+    if (submission.stage !== 'pickup_counter') {
+      throw new BadRequestException('No admin suggestion to accept');
+    }
+    return this.updateStage(
+      id, sellerId, 'pickup_counter', 'pickup_confirmed', 'Customer accepted admin suggested time',
+      {
+        pickup_date: submission.admin_suggested_date,
+        pickup_time_from: submission.admin_suggested_time_from,
+        pickup_time_to: submission.admin_suggested_time_to,
+      },
+    );
+  }
+
+  async counterPickup(id: string, sellerId: string, data: {
+    pickup_date: string;
+    pickup_time_from: string;
+    pickup_time_to: string;
+    pickup_address: string;
+    driver_phone: string;
+    whatsapp_number: string;
+    google_maps_link?: string;
+  }) {
+    const submission = await this.getById(id, sellerId);
+    if (submission.stage !== 'pickup_counter') {
+      throw new BadRequestException('Cannot counter-propose at this stage');
+    }
+    return this.updateStage(
+      id, sellerId, 'pickup_counter', 'pickup_proposed', 'Customer counter-proposed new pickup time',
+      {
+        pickup_date: data.pickup_date,
+        pickup_time_from: data.pickup_time_from,
+        pickup_time_to: data.pickup_time_to,
+        pickup_address: data.pickup_address,
+        driver_phone: data.driver_phone,
+        whatsapp_number: data.whatsapp_number,
+        google_maps_link: data.google_maps_link || null,
+      },
+    );
   }
 
   async dispatchDriver(id: string, adminId: string) {
-    return this.updateStage(id, adminId, 'pickup_scheduled', 'driver_dispatched', 'Driver dispatched');
+    return this.updateStage(id, adminId, 'pickup_confirmed', 'driver_dispatched', 'Driver dispatched');
   }
 
   async arrivedAtOffice(id: string, adminId: string) {
@@ -249,22 +324,17 @@ export class SubmissionsService {
   }
 
   async photoshootDone(id: string, adminId: string, proPhotos: string[], proDescription?: string) {
-    const client = this.supabase.getClient();
-    const { error } = await client
-      .from('wimc_submissions')
-      .update({
-        pro_photos: proPhotos,
-        pro_description: proDescription,
-        stage: 'photoshoot_done',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id);
-    if (error) throw new BadRequestException(error.message);
-    await this.addEvent(id, adminId, 'Professional photoshoot completed', 'auth_passed', 'photoshoot_done');
-    return this.getById(id, undefined, true);
+    return this.updateStage(
+      id, adminId, 'auth_passed', 'photoshoot_done', 'Professional photoshoot completed',
+      { pro_photos: proPhotos, pro_description: proDescription },
+    );
   }
 
-  private async updateStage(id: string, actorId: string, expectedStage: string, newStage: string, message: string) {
+  private async updateStage(
+    id: string, actorId: string,
+    expectedStage: string, newStage: string, message: string,
+    extraFields?: Record<string, any>,
+  ) {
     const client = this.supabase.getClient();
     const submission = await this.getById(id, undefined, true);
 
@@ -274,7 +344,7 @@ export class SubmissionsService {
 
     const { error } = await client
       .from('wimc_submissions')
-      .update({ stage: newStage, updated_at: new Date().toISOString() })
+      .update({ stage: newStage, updated_at: new Date().toISOString(), ...extraFields })
       .eq('id', id);
     if (error) throw new BadRequestException(error.message);
 

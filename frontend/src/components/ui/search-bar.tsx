@@ -25,7 +25,7 @@ export function SearchBar({ placeholder = 'Search...', onSearch, defaultValue = 
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-wimc-surface border border-wimc-border rounded-lg pl-10 pr-4 py-2.5 text-white placeholder:text-wimc-subtle focus:outline-none focus:border-wimc-border-alt transition-colors"
+        className="w-full bg-wimc-surface border border-wimc-border rounded-lg pl-10 pr-4 py-2.5 text-[16px] leading-normal text-white placeholder:text-wimc-subtle focus:outline-none focus:border-wimc-border-alt transition-colors"
       />
     </form>
   );

@@ -38,7 +38,7 @@ export class WimcGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       // Join role room
       if (profile.role === 'admin') client.join('admin');
-      if (['seller', 'vip_seller'].includes(profile.role)) client.join('sellers');
+      if (['customer', 'celebrity'].includes(profile.role)) client.join('sellers');
 
       // Track socket (limit to 5 connections per user to prevent resource exhaustion)
       const existing = this.userSockets.get(user.id) || [];

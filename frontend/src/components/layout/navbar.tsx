@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import { useState } from 'react';
 import { Button } from '../ui/button';
@@ -11,12 +11,13 @@ const NAV_ITEMS = [
   { href: '/', label: 'Home' },
   { href: '/browse', label: 'Shop' },
   { href: '/celebrities', label: 'Celebrities' },
-  { href: '/seller/dashboard', label: 'My Closet', requiresSeller: true },
+  { href: '/seller/dashboard', label: 'My Closet', requiresAuth: true },
 ];
 
 export function Navbar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobMenu, setMobMenu] = useState(false);
 
@@ -30,7 +31,7 @@ export function Navbar() {
       <div className="max-w-[1200px] mx-auto px-6">
         <div className="flex items-center justify-between h-[60px]">
           {/* Logo */}
-          <Link href="/" className="flex items-center">
+          <Link href="/" className="flex items-center caret-transparent select-none outline-none">
             <div>
               <span className="font-heading text-[22px] font-bold tracking-[1px] leading-none block">WIMC</span>
               <span className="font-accent text-[13px] text-[#666] block">by Dina Bahgat</span>
@@ -40,7 +41,7 @@ export function Navbar() {
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-7">
             {NAV_ITEMS.map((item) => {
-              if (item.requiresSeller && (!user || !['seller', 'vip_seller'].includes(user.role))) return null;
+              if (item.requiresAuth && !user) return null;
               const active = isActive(item.href);
               return (
                 <Link
@@ -73,16 +74,16 @@ export function Navbar() {
                       {user.role === 'admin' && (
                         <Link href="/admin" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-wimc-muted hover:text-white hover:bg-wimc-surface-alt">Admin Panel</Link>
                       )}
+                      {user.role === 'developer' && (
+                        <Link href="/developer" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-wimc-muted hover:text-white hover:bg-wimc-surface-alt">Developer Panel</Link>
+                      )}
                       <Link href="/dashboard" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-wimc-muted hover:text-white hover:bg-wimc-surface-alt">Dashboard</Link>
                       <Link href="/orders" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-wimc-muted hover:text-white hover:bg-wimc-surface-alt">Orders</Link>
-                      {['seller', 'vip_seller'].includes(user.role) && (
-                        <>
-                          <Link href="/seller/dashboard" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-wimc-muted hover:text-white hover:bg-wimc-surface-alt">Seller Dashboard</Link>
-                          <Link href="/seller/submissions" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-wimc-muted hover:text-white hover:bg-wimc-surface-alt">My Submissions</Link>
-                        </>
-                      )}
+                      <Link href="/seller/dashboard" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-wimc-muted hover:text-white hover:bg-wimc-surface-alt">My Closet</Link>
+                      <Link href="/seller/submit" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-wimc-muted hover:text-white hover:bg-wimc-surface-alt">Submit Item</Link>
+                      <Link href="/seller/submissions" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm text-wimc-muted hover:text-white hover:bg-wimc-surface-alt">My Submissions</Link>
                       <hr className="border-wimc-border my-1" />
-                      <button onClick={() => { logout(); setMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm text-wimc-red hover:bg-wimc-surface-alt">Sign Out</button>
+                      <button onClick={() => { logout(); setMenuOpen(false); router.replace('/'); }} className="w-full text-left px-4 py-2 text-sm text-wimc-red hover:bg-wimc-surface-alt">Sign Out</button>
                     </div>
                   </>
                 )}
@@ -116,7 +117,7 @@ export function Navbar() {
       >
         <div className="bg-wimc-surface border-b border-wimc-border px-6 py-2 pb-4">
           {NAV_ITEMS.map((item) => {
-            if (item.requiresSeller && (!user || !['seller', 'vip_seller'].includes(user.role))) return null;
+            if (item.requiresAuth && !user) return null;
             const active = isActive(item.href);
             return (
               <Link
@@ -132,7 +133,7 @@ export function Navbar() {
           {user ? (
             <>
               <Link href="/dashboard" onClick={() => setMobMenu(false)} className="block py-3 text-[16px] min-h-[44px] text-[#888]">Account</Link>
-              <button onClick={() => { logout(); setMobMenu(false); }} className="block py-3 text-[16px] min-h-[44px] text-wimc-red">Sign Out</button>
+              <button onClick={() => { logout(); setMobMenu(false); router.replace('/'); }} className="block py-3 text-[16px] min-h-[44px] text-wimc-red">Sign Out</button>
             </>
           ) : (
             <div className="flex gap-2 pt-2">

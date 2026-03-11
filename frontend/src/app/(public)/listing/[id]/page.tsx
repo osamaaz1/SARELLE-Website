@@ -167,7 +167,10 @@ export default function ListingDetailPage() {
   };
 
   const handleBuyNow = () => {
-    if (!user) { router.push('/auth/login'); return; }
+    if (!user) {
+      router.push(`/auth/login?redirect=${encodeURIComponent(`/listing/${listing.id}`)}`);
+      return;
+    }
     if (isEndedAuction && auction.current_winner_id === user.id) {
       router.push(`/checkout/${listing.id}?auction_id=${auction.id}`);
     } else {
@@ -319,7 +322,7 @@ export default function ListingDetailPage() {
           ) : (
             <div className="flex items-baseline gap-2 mb-5">
               <span className="text-[28px] font-bold">{fmt(listing.price)}</span>
-              {listing.original_price && (
+              {listing.original_price && discount > 0 && (
                 <>
                   <span className="text-[16px] text-[#444] line-through">{fmt(listing.original_price)}</span>
                   <span className="text-[14px] font-bold text-wimc-red">-{discount}%</span>
@@ -362,7 +365,7 @@ export default function ListingDetailPage() {
                   size="md"
                   className="w-full"
                   onClick={() => {
-                    if (!user) { router.push('/auth/login'); return; }
+                    if (!user) { router.push(`/auth/login?redirect=${encodeURIComponent(`/listing/${listing.id}`)}`); return; }
                     setBidAmount(String(getMinBid()));
                     setBidOpen(true);
                   }}
@@ -390,7 +393,7 @@ export default function ListingDetailPage() {
                 size="md"
                 className="flex-1"
                 onClick={() => {
-                  if (!user) { router.push('/auth/login'); return; }
+                  if (!user) { router.push(`/auth/login?redirect=${encodeURIComponent(`/listing/${listing.id}`)}`); return; }
                   setOfferOpen(true);
                 }}
               >

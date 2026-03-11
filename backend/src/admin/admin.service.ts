@@ -43,7 +43,7 @@ export class AdminService {
     const { data, count } = await client
       .from('wimc_profiles')
       .select('*, wimc_seller_profiles(*)', { count: 'exact' })
-      .in('role', ['seller', 'vip_seller'])
+      .in('role', ['customer', 'celebrity'])
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
     return { sellers: data || [], total: count || 0, page };

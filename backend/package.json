@@ -7,7 +7,10 @@
     "start": "nest start",
     "dev": "nest start --watch",
     "start:prod": "node dist/main",
-    "lint": "eslint \"{src,test}/**/*.ts\""
+    "lint": "eslint \"{src,test}/**/*.ts\"",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",
@@ -31,14 +34,18 @@
   "devDependencies": {
     "@nestjs/cli": "^10.4.9",
     "@nestjs/schematics": "^10.2.3",
+    "@nestjs/testing": "^11.1.16",
     "@types/express": "^5.0.0",
+    "@types/jest": "^30.0.0",
     "@types/multer": "^2.1.0",
     "@types/node": "^22.10.2",
     "@types/pg": "^8.18.0",
     "@types/sharp": "^0.31.1",
     "@types/uuid": "^10.0.0",
     "eslint": "^8.57.1",
+    "jest": "^30.3.0",
     "pg": "^8.20.0",
+    "ts-jest": "^29.4.6",
     "typescript": "^5.7.2"
   }
 }

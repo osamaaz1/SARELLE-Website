@@ -9,7 +9,7 @@ function tick() {
   listeners.forEach((fn) => fn());
 }
 
-function calcRemaining(endsAt: string): string {
+export function calcRemaining(endsAt: string): string {
   const diff = new Date(endsAt).getTime() - Date.now();
   if (diff <= 0) return 'Ended';
   const d = Math.floor(diff / 86400000);

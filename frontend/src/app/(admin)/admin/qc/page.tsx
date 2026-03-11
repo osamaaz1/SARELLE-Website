@@ -16,6 +16,7 @@ export default function AdminQCPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [failNotes, setFailNotes] = useState<Record<string, string>>({});
+  const [failErrors, setFailErrors] = useState<Record<string, string>>({});
 
   const fetchData = () => {
     setLoading(true);
@@ -24,11 +25,22 @@ export default function AdminQCPage() {
   useEffect(() => { fetchData(); }, []);
 
   const handleQC = async (subId: string, passed: boolean) => {
+    if (!passed && !failNotes[subId]?.trim()) {
+      setFailErrors({ ...failErrors, [subId]: 'Please provide a reason for failing this item' });
+      return;
+    }
+    if (!passed && !window.confirm('Fail authentication for this item? The seller will be notified.')) return;
+    if (passed && !window.confirm('Pass authentication for this item?')) return;
+    setFailErrors({ ...failErrors, [subId]: '' });
     try {
       await api.submitQCReport({ submission_id: subId, passed, notes: failNotes[subId] });
       addToast('success', passed ? 'Authentication passed' : 'Authentication failed');
-      fetchData();
-    } catch (err: any) { addToast('error', err.message); }
+      // Optimistic: remove from list (item moves to auth_passed/auth_failed, not fetched here)
+      setItems(prev => prev.filter(s => s.id !== subId));
+    } catch (err: any) {
+      addToast('error', err.message);
+      fetchData(); // refresh on error to get real state
+    }
   };
 
   if (loading) return <LoadingSpinner />;
@@ -52,7 +64,8 @@ export default function AdminQCPage() {
               </div>
               <div className="flex items-end gap-3">
                 <div className="flex-1">
-                  <Input label="Fail Notes (if rejecting)" value={failNotes[sub.id] || ''} onChange={(e) => setFailNotes({ ...failNotes, [sub.id]: e.target.value })} placeholder="Reason for failure..." />
+                  <Input label="Fail Notes (required if rejecting)" value={failNotes[sub.id] || ''} onChange={(e) => { setFailNotes({ ...failNotes, [sub.id]: e.target.value }); setFailErrors({ ...failErrors, [sub.id]: '' }); }} placeholder="Reason for failure..." />
+                  {failErrors[sub.id] && <p className="text-xs text-red-400 mt-1">{failErrors[sub.id]}</p>}
                 </div>
                 <Button variant="success" onClick={() => handleQC(sub.id, true)}>Pass</Button>
                 <Button variant="danger" onClick={() => handleQC(sub.id, false)}>Fail</Button>

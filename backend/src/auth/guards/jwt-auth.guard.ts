@@ -17,6 +17,9 @@ export class JwtAuthGuard implements CanActivate {
     try {
       const user = await this.authService.validateToken(token);
       const profile = await this.authService.getProfile(user.id);
+      if (profile.disabled_at) {
+        throw new UnauthorizedException('Account is disabled');
+      }
       request.user = { ...user, ...profile };
       return true;
     } catch {

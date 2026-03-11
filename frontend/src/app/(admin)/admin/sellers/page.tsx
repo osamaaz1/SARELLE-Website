@@ -37,7 +37,7 @@ export default function AdminSellersPage() {
                 <p className="text-xs text-wimc-subtle">{seller.phone || 'No phone'} &middot; {seller.points} pts</p>
               </div>
               <Badge color={tierColors[seller.tier]}>{seller.tier}</Badge>
-              <Badge color={seller.role === 'vip_seller' ? '#AA88FF' : '#666'}>{seller.role}</Badge>
+              <Badge color={seller.role === 'celebrity' ? '#AA88FF' : '#666'}>{seller.role}</Badge>
             </Card>
           ))}
         </div>

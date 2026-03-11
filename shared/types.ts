@@ -3,6 +3,7 @@ export type WimcRole = 'buyer' | 'seller' | 'vip_seller' | 'admin';
 
 export type SubmissionStage =
   | 'pending_review' | 'price_suggested' | 'price_accepted' | 'price_rejected'
+  | 'pickup_proposed' | 'pickup_confirmed' | 'pickup_counter' | 'pickup_cancelled'
   | 'pickup_scheduled' | 'driver_dispatched' | 'arrived_at_office'
   | 'auth_passed' | 'auth_failed' | 'photoshoot_done' | 'listed' | 'rejected';
 
@@ -64,6 +65,13 @@ export interface Submission {
   pickup_address: string | null;
   driver_phone: string | null;
   google_maps_link: string | null;
+  whatsapp_number: string | null;
+  pickup_time_from: string | null;
+  pickup_time_to: string | null;
+  admin_suggested_date: string | null;
+  admin_suggested_time_from: string | null;
+  admin_suggested_time_to: string | null;
+  admin_pickup_notes: string | null;
   pro_photos: string[];
   pro_description: string | null;
   final_price: number | null;

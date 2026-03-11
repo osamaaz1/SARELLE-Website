@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/providers/auth-provider';
@@ -8,23 +8,37 @@ import { useToast } from '@/providers/toast-provider';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
+function isValidRedirect(url: string): boolean {
+  return url.startsWith('/') && !url.includes('://');
+}
+
 const TEST_ACCOUNTS = [
   { label: 'Admin', email: 'admin@whatinmycloset.com', password: 'Admin123!' },
-  { label: 'Sara', email: 'sara@test.wimc.com', password: 'Seller123!' },
-  { label: 'Reem', email: 'reem@test.wimc.com', password: 'Buyer123!' },
-  { label: 'Yasmine', desc: 'Celebrity', email: 'yasmine@test.wimc.com', password: 'Celeb123!' },
+  { label: 'Sara', email: 'sara@test.wimc.com', password: 'Test123!' },
+  { label: 'Reem', email: 'reem@test.wimc.com', password: 'Test123!' },
+  { label: 'Yasmine', desc: 'Celebrity', email: 'yasmine@test.wimc.com', password: 'Test123!' },
 ];
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirect') || '/dashboard';
-  const { login } = useAuth();
+  const rawRedirect = searchParams.get('redirect') || '/dashboard';
+  const redirectTo = isValidRedirect(rawRedirect) ? rawRedirect : '/dashboard';
+  const { user, loading: authLoading, login } = useAuth();
   const { addToast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [redirecting, setRedirecting] = useState(false);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && user) {
+      setRedirecting(true);
+      router.replace(redirectTo);
+    }
+  }, [user, authLoading, router, redirectTo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,14 +51,15 @@ function LoginForm() {
     try {
       await login(email, password);
       addToast('success', 'Welcome back!');
-      router.push(redirectTo);
+      router.replace(redirectTo);
     } catch (err: any) {
       const msg = err.message || 'Login failed';
-      // Make Supabase error messages user-friendly
       if (msg.includes('Invalid login')) {
         setError('Incorrect email or password');
       } else if (msg.includes('Email not confirmed')) {
         setError('Please confirm your email first');
+      } else if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        setError('Cannot reach server. Please try again.');
       } else {
         setError(msg);
       }
@@ -57,6 +72,17 @@ function LoginForm() {
     setEmail(account.email);
     setPassword(account.password);
   };
+
+  if (authLoading || redirecting) {
+    return (
+      <div className="min-h-screen bg-wimc-bg flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-wimc-muted">{redirecting ? 'Redirecting...' : 'Loading...'}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-wimc-bg flex items-center justify-center px-4">

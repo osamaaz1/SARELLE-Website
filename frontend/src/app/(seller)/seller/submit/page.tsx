@@ -80,7 +80,7 @@ export default function SellerSubmitPage() {
             required
             rows={4}
             placeholder="Describe the item, any signs of wear, included accessories..."
-            className="w-full bg-wimc-surface border border-wimc-border rounded-lg px-4 py-2.5 text-white placeholder:text-wimc-subtle focus:outline-none focus:border-wimc-border-alt transition-colors resize-none"
+            className="w-full bg-wimc-surface border border-wimc-border rounded-lg px-4 py-2.5 text-[16px] leading-normal text-white placeholder:text-wimc-subtle focus:outline-none focus:border-wimc-border-alt transition-colors resize-none"
           />
         </div>
         <Button type="submit" size="lg" className="w-full" loading={loading}>

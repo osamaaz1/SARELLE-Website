@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { SubmissionsService } from './submissions.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ProposePickupDto } from './dto/pickup.dto';
 
 @Controller('submissions')
 @UseGuards(JwtAuthGuard)
@@ -41,5 +42,20 @@ export class SubmissionsController {
   @Post(':id/reject-price')
   async rejectPrice(@Param('id') id: string, @Req() req: any) {
     return this.submissionsService.rejectPrice(id, req.user.id);
+  }
+
+  @Post(':id/propose-pickup')
+  async proposePickup(@Param('id') id: string, @Req() req: any, @Body() body: ProposePickupDto) {
+    return this.submissionsService.proposePickup(id, req.user.id, body);
+  }
+
+  @Post(':id/accept-admin-time')
+  async acceptAdminTime(@Param('id') id: string, @Req() req: any) {
+    return this.submissionsService.acceptAdminPickupTime(id, req.user.id);
+  }
+
+  @Post(':id/counter-pickup')
+  async counterPickup(@Param('id') id: string, @Req() req: any, @Body() body: ProposePickupDto) {
+    return this.submissionsService.counterPickup(id, req.user.id, body);
   }
 }

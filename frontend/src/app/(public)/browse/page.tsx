@@ -93,7 +93,7 @@ function BrowseContent() {
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             placeholder="Search brands, items..."
-            className="bg-transparent border-none outline-none text-[16px] text-white flex-1 placeholder:text-[#555] min-h-[28px]"
+            className="bg-transparent border-none outline-none text-[16px] leading-normal text-white flex-1 placeholder:text-[#555] min-h-[28px]"
           />
         </div>
 
